@@ -1,10 +1,11 @@
 __author__ = 'pard'
+from numpy import array
 
 
 class GridError(RuntimeError):
     pass
 
-class Grid(object):
+class Grid(array):
 
     def grid(self, no, dir):
         if (dir < 3):
