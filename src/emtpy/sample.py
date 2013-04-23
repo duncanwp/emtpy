@@ -518,24 +518,3 @@ def mqwell(A,widthwell,widthbarr,edge,valwell,valbarr,sz,ag):
 #   end subroutine mqwell
     pass
 
-def harmonic(V,omega,r,sz,ag):
-  #   implicit none
-  #   integer, intent(in) :: sz(3), ag(3)
-  #   complex,intent(inout),dimension(0:sz(1)-1,0:sz(2)-1,0:sz(3)-1)::V
-  #   real, intent(in) :: omega
-  #   real, intent(in), dimension(3) :: r
-  #   integer :: l,m,p
-  #   real :: const = ((0.5d0*me*1E-18)/eV)
-  #   real, dimension(3) :: x
-  #   do l = 0, sz(1)-1
-  #      do m = 0, sz(2)-1
-  #         do p = 0, sz(3)-1
-  #            x(1) = (l*grid(ag,1))+Rsize(1)
-  #            x(2) = (m*grid(ag,1))+Rsize(2)
-  #            x(3) = (p*grid(ag,3))+Rsize(3)
-  #            V(l,m,p) = const*(omega**2)*sum((x-r)**2)
-  #         end do
-  #      end do
-  #   end do
-  # end subroutine harmonic
-    pass

@@ -5,30 +5,32 @@ from numpy import array
 class GridError(RuntimeError):
     pass
 
-class Grid(array):
 
-    def grid(self, no, dir):
-        if (dir < 3):
-           grid = self.aBN/float(no(dir))
-        elif (dir == 3):
-           grid = self.cBN/float(no(dir))
-        else:
-           raise GridError('Invalid dimenion')
-        return grid
+class PhysicalGrid(array):
 
+    def __init__(self, shape, physical_size, values=None):
+        #super(PhysicalGrid, self).__init__(shape=shape)
+        if len(shape) != len(physical_size):
+            raise GridError()
+        self.shape = shape
+        self.size = physical_size
+        self.volume = reduce(lambda x, y: x*y, physical_size)
+        self.increments = map(lambda x, y: x/y, physical_size, shape)
+        self.values = values
 
-    def normalization(self, no):
+    def coord_array(self, dim):
+        from numpy import array
+        return array(map(lambda x, y: x*y, self.increments[dim], xrange(self.size)))
+
+    def coord(self, idx):
+        return map(lambda x, y: x*y, self.increments, idx)
+
+    def normalization(self):
         from math import sqrt
-        if (self.nodimensions == 1):
-           normalization = 1.0/sqrt(self.grid(no,self.direction))
-        else:
-           normalization = 1.0/sqrt(self.grid(no,1)*self.grid(no,2)*self.grid(no,3))
-        return normalization
+        return 1.0/sqrt(self.volume)
 
-
-    def integral(self, array, ag):
-        return sum(array)/(self.normalization(ag)**2)
-
+    def rect_integral(self):
+        return self.values.sum()/(self.normalization()**2)
 
     def adim(self, dir):
         if (self.direction == 3):
@@ -45,15 +47,14 @@ class Grid(array):
            raise GridError('ERROR in well direction')
         return adim
 
-    def getijk(self, n, sz):
+    def getijk(self, n):
         from math import floor
+        sz = self.shape
         k = floor(float((n-1)/(sz(1)*sz(2))))
         j = floor(float((n-1-(k*sz(1)*sz(2)))/sz(1)))
         i = floor(float(n-1-(k*sz(1)*sz(2))-(j*sz(1))))
-        return (i,j,k)
+        return i, j, k
 
-    def getn(self, n,i,j,k,sz):
-        return j*sz(1) + i + k*sz(1)*sz(2) + 1
-
-    def nvalue(self, i, j, k, sz):
+    def getn(self, i, j, k):
+        sz = self.shape
         return j*sz(1) + i + k*sz(1)*sz(2) + 1
