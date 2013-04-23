@@ -1,5 +1,5 @@
 __author__ = 'pard'
-
+from nose.tools import istest, eq_
 
 def harmonic(omega, shape, size):
   #   implicit none
@@ -46,3 +46,25 @@ def harmonic(omega, shape, size):
         return const*(omega**2)*sum(pos)
 
     grid.values = fromfunction(_harmonic_oscillator, shape)
+
+
+def test_carrier():
+    pass
+
+class EngineTests(object):
+
+    def __init__(self):
+        self.potential = harmonic(1.0, (100, 100, 100), (10.0, 10.0, 10.0))
+        self.carrier = test_carrier()
+
+    @istest
+    def test_harmonic_oscilator_energies(self):
+        self.engine.solve(self.potential, self.carrier)
+
+
+class ArpackTests(EngineTests):
+
+    def __init__(self):
+        from emtpy.engine import Arpack
+        super(ArpackTests, self).__init__()
+        self.engine = Arpack()
