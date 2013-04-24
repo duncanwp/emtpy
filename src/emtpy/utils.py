@@ -9,3 +9,10 @@ def heaviside(x):
 
 def deltaij(i,j):
     return 1.0 if i==j else 0.0
+
+
+def product(a_list):
+    prod = 1
+    for item in a_list:
+        prod *= item
+    return prod

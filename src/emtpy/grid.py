@@ -9,18 +9,19 @@ class GridError(RuntimeError):
 class PhysicalGrid(array):
 
     def __init__(self, shape, physical_size, values=None):
+        from emtpy.utils import product
         #super(PhysicalGrid, self).__init__(shape=shape)
         if len(shape) != len(physical_size):
             raise GridError()
         self.shape = shape
         self.size = physical_size
-        self.volume = reduce(lambda x, y: x*y, physical_size)
+        self.volume = product(physical_size)
         self.increments = map(lambda x, y: x/y, physical_size, shape)
         self.values = values
 
     def coord_array(self, dim):
         from numpy import array
-        return array(map(lambda x, y: x*y, self.increments[dim], xrange(self.size)))
+        return array(map(lambda x, y: x*y, self.increments[dim], range(self.size)))
 
     def coord(self, idx):
         return map(lambda x, y: x*y, self.increments, idx)
