@@ -1,5 +1,31 @@
 __author__ = 'pard'
 
+
+#   subroutine Apos(AllR,R,rrun,Ano)
+#     implicit none
+#     real, dimension(3,maxpos),intent(in) :: AllR
+#     real, dimension(3,maxpos),intent(out) :: R
+#     real, dimension(6), intent(in) :: rrun
+#     integer, intent(out) :: Ano
+#     integer :: n,ifail, p
+#     real :: t
+#     real, dimension(3) :: x
+#     p = 0
+#     do n = 1, totA
+#        if (AllR(1,n) .ge. rrun(1) .and. AllR(1,n) .lt. rrun(4)) then
+#           if (AllR(2,n) .ge. rrun(2) .and. AllR(2,n) .lt. rrun(5)) then
+#              if (AllR(3,n) .ge. rrun(3) .and. AllR(3,n) .lt. rrun(6)) then
+#                    p = p + 1
+#                    R(:,p) = AllR(:,n)-rrun(1:3)
+#             end if
+#           end if
+#        end if
+#     end do
+#     Ano = p
+#   end subroutine Apos
+#
+
+
 #
 # program main
 #   use routines
