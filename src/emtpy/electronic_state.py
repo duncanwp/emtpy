@@ -1,6 +1,54 @@
 __author__ = 'pard'
+from emtpy.grid import PhysicalGrid
 
-class state(object):
+
+class state(PhysicalGrid):
+
+    def expected_pos(self):
+        """
+            Find the expectation value for the position operator acting on this state. Because the
+             wavefunction is on a periodic grid we shift the origin to the smallest value point
+             and then perform the integral, then we shift it back after.
+        @return:
+        """
+        from numpy import argmin, ndenumerate
+        from math import sqrt
+
+        # It might be worth testing this line to see if the abs stops numpy from optimizing it
+        #  as it's not really needed
+        arr_squared = (abs(self.values))**2
+
+        minimum = self.coord(argmin(arr_squared))
+
+        expected_pos = 0.0
+        expected_pos_sq = 0.0
+
+        for idx, val in ndenumerate(arr_squared):
+            # Shift the coordinate
+            pos = self.coord(idx) - minimum
+            # If we've shifted it to a -ve value wrap it round
+            for i, coord in enumerate(pos):
+                if coord < 0.0:
+                    coord -= self.size[i]
+
+            expected_pos += pos*val
+            expected_pos_sq += (pos**2)*val
+
+        expected_pos *= self.volume
+        expected_pos_sq *= self.volume
+
+        # Shift the value back and perform any wrapping necassary
+        expected_pos += minimum
+        for i, coord in enumerate(expected_pos):
+            if coord < 0.0:
+                coord -= self.size[i]
+
+        std_dev_in_expected_pos = sqrt(expected_pos_sq-expected_pos**2)
+
+        return expected_pos, std_dev_in_expected_pos
+
+
+class ensemble(object):
     pass
 
 #

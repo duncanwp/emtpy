@@ -24,7 +24,8 @@ class PhysicalGrid(array):
         return array(map(lambda x, y: x*y, self.increments[dim], range(self.size)))
 
     def coord(self, idx):
-        return map(lambda x, y: x*y, self.increments, idx)
+        from numpy import array
+        return array(map(lambda x, y: x*y, self.increments, idx))
 
     def normalization(self):
         from math import sqrt
