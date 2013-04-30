@@ -144,7 +144,6 @@ class TernaryMaterial(object):
         self.deltaP = materialA.spontaneous_polarization - materialB.spontaneous_polarization
 
 
-
 class AlGaN(TernaryMaterial):
     pass
     

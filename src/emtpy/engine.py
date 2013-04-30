@@ -1,108 +1,201 @@
 __author__ = 'pard'
 
-#   real function invmassxy(chi,para)
-#     implicit none
-#     real, intent(in) :: chi
-#     character(2), intent(in) :: para
-#     if (para =='_e') then
-#        invmassxy = (chi/mANxy) + ((1.0d0-chi)/mBNxy)
-#     else if (para == 'hh') then
-#        invmassxy = (chi/mhhANxy) + ((1.0d0-chi)/mhhBNxy)
-#     else if (para == 'lh') then
-#        invmassxy = (chi/mlhANxy) + ((1.0d0-chi)/mlhBNxy)
-#     else if (para == 'sh') then
-#        invmassxy = (chi/mshANxy) + ((1.0d0-chi)/mshBNxy)
-#     else if (para == '_h') then
-#        invmassxy = (chi/mhANDOS) + ((1.0d0-chi)/mhBNDOS)
-#     else
-#        write(6,*) "Missing carrier parameter"
-#        call abort
-#     end if
-#   end function invmassxy
-#
-#   real function invmassz(chi,para)
-#     implicit none
-#     real, intent(in) :: chi
-#     character(2), intent(in) :: para
-#     if (para =='_e') then
-#        invmassz = (chi/mANz) + ((1.0d0-chi)/mBNz)
-#     else if (para == 'hh') then
-#        invmassz = (chi/mhhANz) + ((1.0d0-chi)/mhhBNz)
-#     else if (para == 'lh') then
-#        invmassz = (chi/mlhANz) + ((1.0d0-chi)/mlhBNz)
-#     else if (para == 'sh') then
-#        invmassz = (chi/mshANz) + ((1.0d0-chi)/mshBNz)
-#     else if (para == '_h') then
-#        invmassz = (chi/mhANDOS) + ((1.0d0-chi)/mhBNDOS)
-#     else
-#        write(6,*) "Missing carrier parameter"
-#        call abort
-#     end if
-#   end function invmassz
-#
-#   real function an3(i,j,k,X,para,sz,ag)
-#     implicit none
-#     integer, intent(in) :: i, j, k
-#     integer, intent(in) :: sz(3),ag(3)
-#     complex, intent(in), dimension(0:sz(1)-1,0:sz(2)-1,0:sz(3)-1) :: X
-#     character(2), intent(in) :: para
-#     real :: chia,chib
-#     chia = real(X(i,j,k))
-#     chib = real(X(mod(i-1+sz(1),sz(1)),j,k))
-#     an3 = (-units/(4.0d0*(grid(ag,1)**2)))*(invmassxy(chia,para)+invmassxy(chib,para))
-#   end function an3
-#
-#   real function bn3(i,j,k,X,para,sz,ag)
-#     implicit none
-#     integer, intent(in) :: i, j, k
-#     integer, intent(in) :: sz(3),ag(3)
-#     complex, intent(in), dimension(0:sz(1)-1,0:sz(2)-1,0:sz(3)-1) :: X
-#     character(2), intent(in) :: para
-#     real :: chia,chib
-#     chia = real(X(i,j,k))
-#     chib = real(X(i,mod(j-1+sz(2),sz(2)),k))
-#     bn3 = (-units/(4.0d0*(grid(ag,1)**2)))*(invmassxy(chia,para)+invmassxy(chib,para))
-#   end function bn3
-#
-#   real function cn3(i,j,k,X,para,sz,ag)
-#     implicit none
-#     integer, intent(in) :: i, j, k
-#     integer, intent(in) :: sz(3),ag(3)
-#     complex, intent(in), dimension(0:sz(1)-1,0:sz(2)-1,0:sz(3)-1) :: X
-#     character(2), intent(in) :: para
-#     real :: chia,chib
-#     chia = real(X(i,j,k))
-#     chib = real(X(i,j,mod(k-1+sz(3),sz(3))))
-#     cn3 = (-units/(4.0d0*(grid(ag,3)**2)))*(invmassz(chia,para) + invmassz(chib,para))
-#   end function cn3
-#
-#   real function dn4(i,j,k,X,V,para,sz,ag)
-#     implicit none
-#     integer, intent(in) :: i, j, k
-#     integer, intent(in) :: sz(3),ag(3)
-#     complex,intent(in),dimension(0:sz(1)-1,0:sz(2)-1,0:sz(3)-1)::X,V
-#     character(2), intent(in) :: para
-#     real :: chi,chia,chib,alphazero,betazero,gammazero
-#     chi = real(X(i,j,k))
-#     chia = real(X(mod(i+1,sz(1)),j,k))
-#     chib = real(X(mod(i-1+sz(1),sz(1)),j,k))
-#     alphazero = 2.0d0*invmassxy(chi,para) + invmassxy(chia,para) + &
-#          &invmassxy(chib,para)
-#
-#     chia = real(X(i,mod(j+1,sz(2)),k))
-#     chib = real(X(i,mod(j-1+sz(2),sz(2)),k))
-#     betazero = 2.0d0*invmassxy(chi,para) + invmassxy(chia,para) + &
-#          &invmassxy(chib,para)
-#
-#     chia = real(X(i,j,mod(k+1,sz(3))))
-#     chib = real(X(i,j,mod(k-1+sz(3),sz(3))))
-#     gammazero = 2.0d0*invmassz(chi,para) + invmassz(chia,para) + &
-#          &invmassz(chib,para)
-#
-#     dn4 = (units*0.25d0*((alphazero+betazero)/(grid(ag,1)**2) + &
-#          &(gammazero)/(grid(ag,3)**2))) + real(V(i,j,k))
-#   end function dn4
-#
+
+class Engine(object):
+
+    def __init__(self, mat_dist, potential_energy):
+        self.mat_dist = mat_dist
+        self.pot_energy = potential_energy
+        self.hamiltonian = self._create_hamiltonian()
+
+    def _create_hamiltonian(self):
+        pass
+
+    def solve(self):
+        pass
+
+
+class SparseSolver(Engine):
+
+    def _create_hamiltonian(self):
+        pass
+
+
+ #  subroutine sprsymqckprdc(V,X,para,sz,ag)
+ #    implicit none
+ #    integer, intent(in) :: sz(3),ag(3)
+ #    complex,intent(in),dimension(0:sz(1)-1,0:sz(2)-1,0:sz(3)-1)::V,X
+ #    character(2), intent(in) :: para
+ #    integer :: i, j, k, l, m, n, p, q,nm, elements
+ #    real :: H,sum
+ #
+ #    k = product(sz) + 1
+ #    ija(1) = product(sz) + 2
+ #
+ #    do q = 0, sz(3)-1
+ #       do m = 0, sz(2)-1
+ #          do l = 0, sz(1)-1
+ #             call getn(j,l,m,q,sz)
+ #             n = 0
+ #             sa(j) = dn4(l,m,q,X,V,para,sz,ag)
+ #             do p = 1, 3
+ #                H = 0.0d0
+ #                if (p == 1) then
+ #                   if (l == sz(1)-1) then
+ #                      H = an3(0,m,q,X,para,sz,ag)
+ #                      call getn(n,0,m,q,sz)
+ #                   else
+ #                      H = an3(l+1,m,q,X,para,sz,ag)
+ #                      call getn(n,l+1,m,q,sz)
+ #                   end if
+ #                else if (p == 2) then
+ #                   if (m == sz(2)-1) then
+ #                      H = bn3(l,0,q,X,para,sz,ag)
+ #                      call getn(n,l,0,q,sz)
+ #                   else
+ #                      H = bn3(l,m+1,q,X,para,sz,ag)
+ #                      call getn(n,l,m+1,q,sz)
+ #                   end if
+ #                else if (p == 3) then
+ #                   if (q == sz(3)-1) then
+ #                      H = cn3(l,m,0,X,para,sz,ag)
+ #                      call getn(n,l,m,0,sz)
+ #                   else
+ #                      H = cn3(l,m,q+1,X,para,sz,ag)
+ #                      call getn(n,l,m,q+1,sz)
+ #                   end if
+ #                end if
+ #                if (H .ne. 0.0) then
+ #                   k = k + 1
+ #                   sa(k) = H
+ #                   ija(k) = n
+ #                end if
+ #             end do
+ #             ija(j+1) = k + 1
+ #          end do
+ #       end do
+ #    end do
+ #    elements = k
+ #
+ #    write(17,*) "Elements used: ", elements
+ #    write(17,*) "Space allocated: ", (product(sz)*4)+1
+ #    write(17,*) "Space required without symmetric storage: ", (product(sz)*7)+1
+ #    write(17,*) "Space required with standard array storage: ", &
+ #         &real(product(sz))**2
+ #
+ #  end subroutine sprsymqckprdc
+ #
+
+    def an3(self, idx):
+        from constants import units
+        previous_x_index = (idx[0]-1, idx[1], idx[2])
+        grid_spacing = self.mat_dist.increments[0]
+        return (-units / (4.0*(grid_spacing**2)))*(self.mat_dist.invmassxy(idx) + self.mat_dist.invmassxy(previous_x_index))
+
+    #   real function an3(i,j,k,X,para,sz,ag)
+    #     implicit none
+    #     integer, intent(in) :: i, j, k
+    #     integer, intent(in) :: sz(3),ag(3)
+    #     complex, intent(in), dimension(0:sz(1)-1,0:sz(2)-1,0:sz(3)-1) :: X
+    #     character(2), intent(in) :: para
+    #     real :: chia,chib
+    #     chia = real(X(i,j,k))
+    #     chib = real(X(mod(i-1+sz(1),sz(1)),j,k))
+    #     an3 = (-units/(4.0d0*(grid(ag,1)**2)))*(invmassxy(chia,para)+invmassxy(chib,para))
+    #   end function an3
+    #
+
+    def bn3(self, idx):
+        from constants import units
+        previous_y_index = (idx[0], idx[1]-1, idx[2])
+        grid_spacing = self.mat_dist.increments[1]
+        return (-units / (4.0*(grid_spacing**2)))*(self.mat_dist.invmassxy(idx) + self.mat_dist.invmassxy(previous_y_index))
+
+    #   real function bn3(i,j,k,X,para,sz,ag)
+    #     implicit none
+    #     integer, intent(in) :: i, j, k
+    #     integer, intent(in) :: sz(3),ag(3)
+    #     complex, intent(in), dimension(0:sz(1)-1,0:sz(2)-1,0:sz(3)-1) :: X
+    #     character(2), intent(in) :: para
+    #     real :: chia,chib
+    #     chia = real(X(i,j,k))
+    #     chib = real(X(i,mod(j-1+sz(2),sz(2)),k))
+    #     bn3 = (-units/(4.0d0*(grid(ag,1)**2)))*(invmassxy(chia,para)+invmassxy(chib,para))
+    #   end function bn3
+    #
+
+    def cn3(self, idx):
+        from constants import units
+        previous_z_index = (idx[0], idx[1], idx[2]-1)
+        grid_spacing = self.mat_dist.increments[2]
+        return (-units / (4.0*(grid_spacing**2)))*(self.mat_dist.invmassz(idx) + self.mat_dist.invmassz(previous_z_index))
+
+
+    #   real function cn3(i,j,k,X,para,sz,ag)
+    #     implicit none
+    #     integer, intent(in) :: i, j, k
+    #     integer, intent(in) :: sz(3),ag(3)
+    #     complex, intent(in), dimension(0:sz(1)-1,0:sz(2)-1,0:sz(3)-1) :: X
+    #     character(2), intent(in) :: para
+    #     real :: chia,chib
+    #     chia = real(X(i,j,k))
+    #     chib = real(X(i,j,mod(k-1+sz(3),sz(3))))
+    #     cn3 = (-units/(4.0d0*(grid(ag,3)**2)))*(invmassz(chia,para) + invmassz(chib,para))
+    #   end function cn3
+    #
+
+    def dn4(self, idx):
+        from constants import units
+        previous_x_index = (idx[0]-1, idx[1], idx[2])
+        next_x_index = (idx[0]+1-self.mat_dist.size[0], idx[1], idx[2])
+        alphazero = (self.mat_dist.invmassxy(previous_x_index) + 2.0*self.mat_dist.invmassxy(idx) +
+                     self.mat_dist.invmassxy(next_x_index)) / self.mat_dist.increments[0]**2
+
+        previous_y_index = (idx[0], idx[1]-1, idx[2])
+        next_y_index = (idx[0], idx[1]+1-self.mat_dist.size[1], idx[2])
+        betazero = (self.mat_dist.invmassxy(previous_y_index) + 2.0*self.mat_dist.invmassxy(idx) +
+                    self.mat_dist.invmassxy(next_y_index)) / self.mat_dist.increments[1]**2
+
+        previous_z_index = (idx[0], idx[1], idx[2]-1)
+        next_z_index = (idx[0], idx[1], idx[2]+1-self.mat_dist.size[2])
+        gammazero = (self.mat_dist.invmassz(previous_z_index) + 2.0*self.mat_dist.invmassz(idx) +
+                     self.mat_dist.invmassz(next_z_index)) / self.mat_dist.increments[2]**2
+
+        return units*0.25*(alphazero + betazero + gammazero) + self.pot_energy.values[idx]
+
+    #   real function dn4(i,j,k,X,V,para,sz,ag)
+    #     implicit none
+    #     integer, intent(in) :: i, j, k
+    #     integer, intent(in) :: sz(3),ag(3)
+    #     complex,intent(in),dimension(0:sz(1)-1,0:sz(2)-1,0:sz(3)-1)::X,V
+    #     character(2), intent(in) :: para
+    #     real :: chi,chia,chib,alphazero,betazero,gammazero
+    #     chi = real(X(i,j,k))
+    #     chia = real(X(mod(i+1,sz(1)),j,k))
+    #     chib = real(X(mod(i-1+sz(1),sz(1)),j,k))
+    #     alphazero = 2.0d0*invmassxy(chi,para) + invmassxy(chia,para) + &
+    #          &invmassxy(chib,para)
+    #
+    #     chia = real(X(i,mod(j+1,sz(2)),k))
+    #     chib = real(X(i,mod(j-1+sz(2),sz(2)),k))
+    #     betazero = 2.0d0*invmassxy(chi,para) + invmassxy(chia,para) + &
+    #          &invmassxy(chib,para)
+    #
+    #     chia = real(X(i,j,mod(k+1,sz(3))))
+    #     chib = real(X(i,j,mod(k-1+sz(3),sz(3))))
+    #     gammazero = 2.0d0*invmassz(chi,para) + invmassz(chia,para) + &
+    #          &invmassz(chib,para)
+    #
+    #     dn4 = (units*0.25d0*((alphazero+betazero)/(grid(ag,1)**2) + &
+    #          &(gammazero)/(grid(ag,3)**2))) + real(V(i,j,k))
+    #   end function dn4
+    #
+
+    def solve(self):
+        from scipy.sparse.linalg import eigsh
+        vals, vectors = eigsh(self.hamiltonian)
+
+
 #   subroutine wavefncmplx(nev,ncv,tol,maxitr,evec,eval,confined,para,n,ag,calc)
 #     implicit none
 #     character(2),intent(in) :: para
@@ -475,70 +568,6 @@ __author__ = 'pard'
 #   end subroutine wavefn
 
 
- #  subroutine sprsymqckprdc(V,X,para,sz,ag)
- #    implicit none
- #    integer, intent(in) :: sz(3),ag(3)
- #    complex,intent(in),dimension(0:sz(1)-1,0:sz(2)-1,0:sz(3)-1)::V,X
- #    character(2), intent(in) :: para
- #    integer :: i, j, k, l, m, n, p, q,nm, elements
- #    real :: H,sum
- #
- #    k = product(sz) + 1
- #    ija(1) = product(sz) + 2
- #
- #    do q = 0, sz(3)-1
- #       do m = 0, sz(2)-1
- #          do l = 0, sz(1)-1
- #             call getn(j,l,m,q,sz)
- #             n = 0
- #             sa(j) = dn4(l,m,q,X,V,para,sz,ag)
- #             do p = 1, 3
- #                H = 0.0d0
- #                if (p == 1) then
- #                   if (l == sz(1)-1) then
- #                      H = an3(0,m,q,X,para,sz,ag)
- #                      call getn(n,0,m,q,sz)
- #                   else
- #                      H = an3(l+1,m,q,X,para,sz,ag)
- #                      call getn(n,l+1,m,q,sz)
- #                   end if
- #                else if (p == 2) then
- #                   if (m == sz(2)-1) then
- #                      H = bn3(l,0,q,X,para,sz,ag)
- #                      call getn(n,l,0,q,sz)
- #                   else
- #                      H = bn3(l,m+1,q,X,para,sz,ag)
- #                      call getn(n,l,m+1,q,sz)
- #                   end if
- #                else if (p == 3) then
- #                   if (q == sz(3)-1) then
- #                      H = cn3(l,m,0,X,para,sz,ag)
- #                      call getn(n,l,m,0,sz)
- #                   else
- #                      H = cn3(l,m,q+1,X,para,sz,ag)
- #                      call getn(n,l,m,q+1,sz)
- #                   end if
- #                end if
- #                if (H .ne. 0.0) then
- #                   k = k + 1
- #                   sa(k) = H
- #                   ija(k) = n
- #                end if
- #             end do
- #             ija(j+1) = k + 1
- #          end do
- #       end do
- #    end do
- #    elements = k
- #
- #    write(17,*) "Elements used: ", elements
- #    write(17,*) "Space allocated: ", (product(sz)*4)+1
- #    write(17,*) "Space required without symmetric storage: ", (product(sz)*7)+1
- #    write(17,*) "Space required with standard array storage: ", &
- #         &real(product(sz))**2
- #
- #  end subroutine sprsymqckprdc
- #
  #  subroutine av(n,x,y)
  #    implicit none
  #    integer,intent(in) :: n

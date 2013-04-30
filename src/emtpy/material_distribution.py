@@ -1,5 +1,17 @@
 __author__ = 'duncan'
+from grid import PhysicalGrid
 
+
+class MaterialDistribution(object):
+
+    def __init__(self, ternary_material, distribution):
+        super(MaterialDistribution, self).__init__()
+
+    def inv_mass_xy(self, idx):
+        return (self.chi(idx)/self.materialA.effective_mass[0]) + ((1.0-self.chi(idx))/self.materialB.effective_mass[0])
+
+    def inv_mass_z(self, idx):
+        return (self.chi(idx)/self.materialA.effective_mass[1]) + ((1.0-self.chi(idx))/self.materialB.effective_mass[1])
 
 #   subroutine conc(R,X,Ano,sz,ag)
 #     implicit none
