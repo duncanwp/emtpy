@@ -1,5 +1,5 @@
 __author__ = 'duncan'
-from emtpy.grid import PhysicalGrid
+from grid import PhysicalGrid
 
 
 class APotentialEnergy(PhysicalGrid):

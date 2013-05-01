@@ -1,6 +1,7 @@
 __author__ = 'pard'
 from nose.tools import istest, eq_
 from emtpy.potential_energy import APotentialEnergy
+from emtpy.material_distribution import MaterialDistribution
 
 
 class harmonic(APotentialEnergy):
@@ -55,20 +56,31 @@ class harmonic(APotentialEnergy):
 def test_carrier():
     pass
 
-class EngineTests(object):
+class MockMaterialDistribution(MaterialDistribution):
 
-    def __init__(self):
-        self.potential = harmonic(1.0, (100, 100, 100), (10.0, 10.0, 10.0))
-        self.carrier = test_carrier()
+    def __init__(self, eff_mass=(1.0,1.0)):
+        self.eff_mass = eff_mass
+        self.increments = (1, 1, 1)
+        self.size = (1, 1, 1)
+
+    def inv_mass_xy(self, idx):
+        return 1.0/self.eff_mass[0]
+
+    def inv_mass_z(self, idx):
+        return 1.0/self.eff_mass[1]
+
+
+class EngineTests(object):
 
     @istest
     def test_harmonic_oscilator_energies(self):
-        self.engine.solve(self.potential, self.carrier)
+        self.engine.solve()
 
 
 class ArpackTests(EngineTests):
 
     def __init__(self):
-        from emtpy.engine import Arpack
-        super(ArpackTests, self).__init__()
-        self.engine = Arpack()
+        from emtpy.engine import SparseSolver
+        potential = harmonic(1.0, (100, 100, 100), (10.0, 10.0, 10.0))
+        mat_dist = MockMaterialDistribution()
+        self.engine = SparseSolver(mat_dist, potential)
