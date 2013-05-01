@@ -14,4 +14,8 @@ class TestPhysicalGrid(object):
     def test_getn(self):
         eq_(self.test_grid.getn(0,0,0), 0)
         eq_(self.test_grid.getn(8,9,10), self.test_grid.no_elements-1)
-        eq_(self.test_grid.getn((8 + 1) % 9, 9, 10), 100)
+        eq_(self.test_grid.getn((8 + 1) % 9, 9, 10), 981)
+
+    @istest
+    def test_get_ijk(self):
+        pass
