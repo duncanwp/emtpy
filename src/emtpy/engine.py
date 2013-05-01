@@ -34,9 +34,9 @@ class SparseSolver(Engine):
             non_zero_index = row*4
 
             # Calculate where the offset matrix elements are in the hamiltonian
-            idx_plus_x = (idx[0]+1-self.pot_energy.size[0], idx[1], idx[2])
-            idx_plus_y = (idx[0], idx[1]+1-self.pot_energy.size[1], idx[2])
-            idx_plus_z = (idx[0], idx[1], idx[2]+1-self.pot_energy.size[2])
+            idx_plus_x = ((idx[0]+1) % self.pot_energy.size[0], idx[1], idx[2])
+            idx_plus_y = (idx[0], (idx[1]+1) % self.pot_energy.size[1], idx[2])
+            idx_plus_z = (idx[0], idx[1], (idx[2]+1) % self.pot_energy.size[2])
             n_x = self.pot_energy.getn(*idx_plus_x)
             n_y = self.pot_energy.getn(*idx_plus_y)
             n_z = self.pot_energy.getn(*idx_plus_z)

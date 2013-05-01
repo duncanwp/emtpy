@@ -56,10 +56,10 @@ class PhysicalGrid(object):
     def getijk(self, n):
         from math import floor
         sz = self.shape
-        k = floor(float((n-1)/(sz[1]*sz[2])))
-        j = floor(float((n-1-(k*sz[1]*sz[2]))/sz[1]))
-        i = floor(float(n-1-(k*sz[1]*sz[2])-(j*sz[1])))
+        k = floor(float((n-1)/(sz[0]*sz[1])))
+        j = floor(float((n-1-(k*sz[0]*sz[1]))/sz[0]))
+        i = floor(float(n-1-(k*sz[0]*sz[1])-(j*sz[0])))
         return i, j, k
 
     def getn(self, i, j, k):
-        return j*self.shape[1] + i + k*self.shape[1]*self.shape[2] + 1
+        return j*self.shape[0] + i + k*self.shape[0]*self.shape[1]

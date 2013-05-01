@@ -4,33 +4,36 @@ from emtpy.potential_energy import APotentialEnergy
 from emtpy.material_distribution import MaterialDistribution
 
 
-class harmonic(APotentialEnergy):
+class OneDWell(APotentialEnergy):
+
+    def __init__(self, width, depth, shape, size):
+        from numpy import fromfunction
+
+        # Create a new grid for the potential
+        super(Harmonic, self).__init__(shape, size)
+
+        # Define r_0, the center of the well, to be the middle of the grid
+        r_0 = map(lambda x: x / 2.0, size[0])
+
+        def _single_well(i, j, k):
+            """
+                Function to evaluate the quantum well potential on any index in a 3-D array
+            """
+            from emtpy.utils import heaviside
+            x = self.coord((i, j, k))
+            return 0.0 - depth*heaviside(abs(x-r_0)-width/2.0)
+
+        self.values = fromfunction(_single_well, shape)
+
+
+class Harmonic(APotentialEnergy):
 
     def __init__(self, omega, shape, size):
-      #   implicit none
-      #   integer, intent(in) :: sz(3), ag(3)
-      #   complex,intent(inout),dimension(0:sz(1)-1,0:sz(2)-1,0:sz(3)-1)::V
-      #   real, intent(in) :: omega
-      #   real, intent(in), dimension(3) :: r
-      #   integer :: l,m,p
-      #   real :: const = ((0.5d0*me*1E-18)/eV)
-      #   real, dimension(3) :: x
-      #   do l = 0, sz(1)-1
-      #      do m = 0, sz(2)-1
-      #         do p = 0, sz(3)-1
-      #            x(1) = (l*grid(ag,1))+Rsize(1)
-      #            x(2) = (m*grid(ag,1))+Rsize(2)
-      #            x(3) = (p*grid(ag,3))+Rsize(3)
-      #            V(l,m,p) = const*(omega**2)*sum((x-r)**2)
-      #         end do
-      #      end do
-      #   end do
-      # end subroutine harmonic
         from emtpy.constants import eV, me
         from numpy import fromfunction
 
         # Create a new grid for the potential
-        super(harmonic, self).__init__(shape, size)
+        super(Harmonic, self).__init__(shape, size)
 
         # Define the normalization constant
         const = ((0.5*me*1E-18)/eV)
@@ -44,21 +47,14 @@ class harmonic(APotentialEnergy):
             """
             x = self.coord((i, j, k))
             pos = map(lambda x, r: (x-r)**2, x, r_0)
-            # pos = []
-            # pos[0] = (i*shape[0]/size[0] - r_0[0])**2
-            # pos[1] = (j*shape[1]/size[1] - r_0[1])**2
-            # pos[2] = (k*shape[2]/size[2] - r_0[2])**2
             return const*(omega**2)*sum(pos)
 
         self.values = fromfunction(_harmonic_oscillator, shape)
 
 
-def test_carrier():
-    pass
-
 class MockMaterialDistribution(MaterialDistribution):
 
-    def __init__(self, eff_mass=(1.0,1.0)):
+    def __init__(self, eff_mass=(1.0, 1.0)):
         self.eff_mass = eff_mass
         self.increments = (1, 1, 1)
         self.size = (1, 1, 1)
@@ -72,15 +68,37 @@ class MockMaterialDistribution(MaterialDistribution):
 
 class EngineTests(object):
 
+    def __init__(self, engine):
+        self.TestEngine = engine
+
+    def setup_harmonic(self):
+        self.potential = Harmonic(1.0, (100, 100, 100), (10.0, 10.0, 10.0))
+        self.mat_dist = MockMaterialDistribution()
+        self.engine = self.TestEngine(self.mat_dist, self.potential)
+
+    def setup_one_d_well(self):
+        self.potential = OneDWell(2.0, 1.0, (100, 1, 1), (10.0, 0.0, 0.0))
+        self.mat_dist = MockMaterialDistribution()
+        self.engine = self.TestEngine(self.mat_dist, self.potential)
+
     @istest
     def test_harmonic_oscilator_energies(self):
-        self.engine.solve()
+        from emtpy.constants import hbarev
+        self.setup_harmonic()
+        vals, vectors = self.engine.solve()
+        eq_(vals[0], hbarev*1)
+        eq_(vals[1], hbarev*2)
+
+    @istest
+    def test_one_d_well_energies(self):
+        from emtpy.constants import hbarev
+        vals, vectors = self.engine.solve()
+        eq_(vals[0], hbarev*1)
+        eq_(vals[1], hbarev*2)
 
 
 class ArpackTests(EngineTests):
 
     def __init__(self):
         from emtpy.engine import SparseSolver
-        potential = harmonic(1.0, (100, 100, 100), (10.0, 10.0, 10.0))
-        mat_dist = MockMaterialDistribution()
-        self.engine = SparseSolver(mat_dist, potential)
+        super(ArpackTests, self).__init__(SparseSolver)
