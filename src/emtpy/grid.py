@@ -14,9 +14,9 @@ class PhysicalGrid(object):
         if len(shape) != len(physical_size):
             raise GridError()
         self.shape = shape
-        self.size = physical_size
+        self.size = map(float, physical_size)
         self.volume = product(physical_size)
-        self.increments = map(lambda x, y: x/y, physical_size, shape)
+        self.increments = map(lambda x, y: x/y, self.size, shape)
         self.values = values
         self.no_elements = product(shape)
 
@@ -26,6 +26,9 @@ class PhysicalGrid(object):
     def coord_array(self, dim):
         from numpy import array
         return array(map(lambda x, y: x*y, self.increments[dim], range(self.size)))
+
+    def find_index(self, coord):
+        return tuple(map(lambda x, y: int(round(x/y)), coord, self.increments))
 
     def coord(self, idx):
         from numpy import array
@@ -54,12 +57,9 @@ class PhysicalGrid(object):
         return adim
 
     def getijk(self, n):
-        from math import floor
-        sz = self.shape
-        k = floor(float((n-1)/(sz[0]*sz[1])))
-        j = floor(float((n-1-(k*sz[0]*sz[1]))/sz[0]))
-        i = floor(float(n-1-(k*sz[0]*sz[1])-(j*sz[0])))
-        return i, j, k
+        from numpy import unravel_index
+        return unravel_index(n, self.shape)
 
-    def getn(self, i, j, k):
-        return j*self.shape[0] + i + k*self.shape[0]*self.shape[1]
+    def getn(self, idx):
+        from utils import ravel_index
+        return ravel_index(idx, self.shape)

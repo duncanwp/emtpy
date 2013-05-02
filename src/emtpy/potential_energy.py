@@ -6,6 +6,54 @@ class APotentialEnergy(PhysicalGrid):
     pass
 
 
+class OneDWell(APotentialEnergy):
+
+    def __init__(self, width, depth, shape, size):
+        import numpy as np
+
+        # Create a new grid for the potential
+        super(OneDWell, self).__init__(shape, size)
+
+        # Define r_0, the center of the well, to be the middle of the grid
+        r_0 = size[0] / 2.0
+
+        def _single_well(idx):
+            """
+                Function to evaluate the quantum well potential on any index in a 3-D array
+            """
+            from utils import heaviside
+            x = self.coord(idx)
+            return 0.0 - depth*heaviside(abs(x-r_0)-width/2.0)
+
+        self.values = np.fromfunction(_single_well, shape)
+
+
+class Harmonic(APotentialEnergy):
+
+    def __init__(self, omega, shape, size):
+        from constants import eV, me
+        from numpy import fromfunction
+
+        # Create a new grid for the potential
+        super(Harmonic, self).__init__(shape, size)
+
+        # Define the normalization constant
+        const = ((0.5*me*1E-18)/eV)
+
+        # Define r_0, the center of the parabola, to be the middle of the grid
+        r_0 = map(lambda x: x / 2.0, size)
+
+        def _harmonic_oscillator(i, j, k):
+            """
+                Function to evaluate the harmonic potential on any index in a 3-D array
+            """
+            x = self.coord((i, j, k))
+            pos = map(lambda x, r: (x-r)**2, x, r_0)
+            return const*(omega**2)*sum(pos)
+
+        self.values = fromfunction(_harmonic_oscillator, shape)
+
+
 
 #
 #   complex function fphi(kv,chi)
