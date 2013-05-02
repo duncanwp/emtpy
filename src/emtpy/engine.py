@@ -34,32 +34,39 @@ class SparseSolver(Engine):
             non_zero_index = row*4
 
             # Calculate where the offset matrix elements are in the hamiltonian
-            idx_plus_x = ((idx[0]+1) % self.pot_energy.size[0], idx[1], idx[2])
-            idx_plus_y = (idx[0], (idx[1]+1) % self.pot_energy.size[1], idx[2])
-            idx_plus_z = (idx[0], idx[1], (idx[2]+1) % self.pot_energy.size[2])
-            n_x = self.pot_energy.getn(*idx_plus_x)
-            n_y = self.pot_energy.getn(*idx_plus_y)
-            n_z = self.pot_energy.getn(*idx_plus_z)
+            idx_plus = []
+            n = []
+            for dim in range(len(idx)):
+                idx_plus.append(list(idx))
+                idx_plus[dim][dim] = (idx[dim] + 1) % self.pot_energy.size[dim]
+                n.append(self.pot_energy.getn(idx_plus[dim]))
+            # idx_plus_x = ((idx[0]+1) % self.pot_energy.size[0], idx[1], idx[2])
+            # idx_plus_y = (idx[0], (idx[1]+1) % self.pot_energy.size[1], idx[2])
+            # idx_plus_z = (idx[0], idx[1], (idx[2]+1) % self.pot_energy.size[2])
+            # n_x = self.pot_energy.getn(idx_plus_x)
+            # n_y = self.pot_energy.getn(idx_plus_y)
+            # n_z = self.pot_energy.getn(idx_plus_z)
 
             # Calculate the diagonal
             data[non_zero_index] = self.dn4(idx)
             i_index[non_zero_index] = row
             j_index[non_zero_index] = row
 
-            # Calculate the x offset diagonal
-            data[non_zero_index+1] = self.an3(idx_plus_x)
-            i_index[non_zero_index+1] = row
-            j_index[non_zero_index+1] = n_x
+            # Calculate the offset diagonals
+            for dim, idx_p in enumerate(idx_plus):
+                data[non_zero_index+dim] = self.an3(idx_p)
+                i_index[non_zero_index+dim] = row
+                j_index[non_zero_index+dim] = n
 
-            # Calculate the y offset diagonal
-            data[non_zero_index+2] = self.bn3(idx_plus_y)
-            i_index[non_zero_index+2] = row
-            j_index[non_zero_index+2] = n_y
-
-            # Calculate the z offset diagonal
-            data[non_zero_index+3] = self.cn3(idx_plus_z)
-            i_index[non_zero_index+3] = row
-            j_index[non_zero_index+3] = n_z
+            # # Calculate the y offset diagonal
+            # data[non_zero_index+2] = self.bn3(idx_plus_y)
+            # i_index[non_zero_index+2] = row
+            # j_index[non_zero_index+2] = n_y
+            #
+            # # Calculate the z offset diagonal
+            # data[non_zero_index+3] = self.cn3(idx_plus_z)
+            # i_index[non_zero_index+3] = row
+            # j_index[non_zero_index+3] = n_z
 
             row += 1
 
@@ -241,7 +248,7 @@ class SparseSolver(Engine):
 
     def solve(self):
         from scipy.sparse.linalg import eigsh
-        vals, vectors = eigsh(self.hamiltonian)
+        return eigsh(self.hamiltonian, k=2, which='SM')
 
 
 #   subroutine wavefncmplx(nev,ncv,tol,maxitr,evec,eval,confined,para,n,ag,calc)
