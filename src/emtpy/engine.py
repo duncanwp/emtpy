@@ -28,6 +28,8 @@ class SparseSolver(Engine):
         j_index = np.zeros(self.pot_energy.no_elements*4)
         data = np.zeros(self.pot_energy.no_elements*4)
 
+        off_diag_elements = [self.an3, self.bn3, self.cn3]
+
         row = 0
         # Loop over the potential energy grid. Every element in this array corresponds to a row in the Hamiltonaian
         for idx, val in np.ndenumerate(self.pot_energy.values):
@@ -35,10 +37,15 @@ class SparseSolver(Engine):
 
             # Calculate where the offset matrix elements are in the hamiltonian
             idx_plus = []
+            idx_minus = []
+            central_diffs = []
             n = []
             for dim in range(len(idx)):
                 idx_plus.append(list(idx))
                 idx_plus[dim][dim] = (idx[dim] + 1) % self.pot_energy.size[dim]
+                idx_minus.append(list(idx))
+                idx_minus[dim][dim] = (idx[dim] - 1) % self.pot_energy.size[dim]
+
                 n.append(self.pot_energy.getn(idx_plus[dim]))
             # idx_plus_x = ((idx[0]+1) % self.pot_energy.size[0], idx[1], idx[2])
             # idx_plus_y = (idx[0], (idx[1]+1) % self.pot_energy.size[1], idx[2])
@@ -47,16 +54,19 @@ class SparseSolver(Engine):
             # n_y = self.pot_energy.getn(idx_plus_y)
             # n_z = self.pot_energy.getn(idx_plus_z)
 
-            # Calculate the diagonal
-            data[non_zero_index] = self.dn4(idx)
-            i_index[non_zero_index] = row
-            j_index[non_zero_index] = row
 
             # Calculate the offset diagonals
             for dim, idx_p in enumerate(idx_plus):
-                data[non_zero_index+dim] = self.an3(idx_p)
+                data[non_zero_index+dim] = off_diag_elements[dim](idx_p, idx_minus)
+                central_diffs.append(self.central_dif(idx_minus, idx, idx_plus, dim))
                 i_index[non_zero_index+dim] = row
-                j_index[non_zero_index+dim] = n
+                j_index[non_zero_index+dim] = n[dim]
+
+            # Calculate the diagonal
+            data[non_zero_index] = self.dn4(idx, central_diffs)
+            i_index[non_zero_index] = row
+            j_index[non_zero_index] = row
+
 
             # # Calculate the y offset diagonal
             # data[non_zero_index+2] = self.bn3(idx_plus_y)
@@ -141,11 +151,10 @@ class SparseSolver(Engine):
  #  end subroutine sprsymqckprdc
  #
 
-    def an3(self, idx):
+    def an3(self, idx, previous_x_index):
         from constants import units
-        previous_x_index = (idx[0]-1, idx[1], idx[2])
         grid_spacing = self.mat_dist.increments[0]
-        return (-units / (4.0*(grid_spacing**2)))*(self.mat_dist.inv_mass_xy(idx) + self.mat_dist.inv_mass_xy(previous_x_index))
+        return (-units / (4.0*(grid_spacing**2)))*(self.mat_dist.inv_mass(idx, 0) + self.mat_dist.inv_mass(previous_x_index, 0))
 
     #   real function an3(i,j,k,X,para,sz,ag)
     #     implicit none
@@ -160,11 +169,10 @@ class SparseSolver(Engine):
     #   end function an3
     #
 
-    def bn3(self, idx):
+    def bn3(self, idx, previous_y_index):
         from constants import units
-        previous_y_index = (idx[0], idx[1]-1, idx[2])
         grid_spacing = self.mat_dist.increments[1]
-        return (-units / (4.0*(grid_spacing**2)))*(self.mat_dist.inv_mass_xy(idx) + self.mat_dist.inv_mass_xy(previous_y_index))
+        return (-units / (4.0*(grid_spacing**2)))*(self.mat_dist.inv_mass(idx, 0) + self.mat_dist.inv_mass(previous_y_index, 0))
 
     #   real function bn3(i,j,k,X,para,sz,ag)
     #     implicit none
@@ -179,11 +187,10 @@ class SparseSolver(Engine):
     #   end function bn3
     #
 
-    def cn3(self, idx):
+    def cn3(self, idx, previous_z_index):
         from constants import units
-        previous_z_index = (idx[0], idx[1], idx[2]-1)
         grid_spacing = self.mat_dist.increments[2]
-        return (-units / (4.0*(grid_spacing**2)))*(self.mat_dist.inv_mass_z(idx) + self.mat_dist.inv_mass_z(previous_z_index))
+        return (-units / (4.0*(grid_spacing**2)))*(self.mat_dist.inv_mass(idx, 1) + self.mat_dist.inv_mass(previous_z_index, 1))
 
 
     #   real function cn3(i,j,k,X,para,sz,ag)
@@ -199,24 +206,13 @@ class SparseSolver(Engine):
     #   end function cn3
     #
 
-    def dn4(self, idx):
+    def central_dif(self, prev_idx, idx, next_idx, dim):
+        return (self.mat_dist.inv_mass(prev_idx, dim) + 2.0*self.mat_dist.inv_mass(idx, dim) +
+                self.mat_dist.inv_mass(next_idx, dim)) / self.mat_dist.increments[dim]**2
+
+    def dn4(self, idx, central_diffs):
         from constants import units
-        previous_x_index = (idx[0]-1, idx[1], idx[2])
-        next_x_index = (idx[0]+1-self.mat_dist.size[0], idx[1], idx[2])
-        alphazero = (self.mat_dist.inv_mass_xy(previous_x_index) + 2.0*self.mat_dist.inv_mass_xy(idx) +
-                     self.mat_dist.inv_mass_xy(next_x_index)) / self.mat_dist.increments[0]**2
-
-        previous_y_index = (idx[0], idx[1]-1, idx[2])
-        next_y_index = (idx[0], idx[1]+1-self.mat_dist.size[1], idx[2])
-        betazero = (self.mat_dist.inv_mass_xy(previous_y_index) + 2.0*self.mat_dist.inv_mass_xy(idx) +
-                    self.mat_dist.inv_mass_xy(next_y_index)) / self.mat_dist.increments[1]**2
-
-        previous_z_index = (idx[0], idx[1], idx[2]-1)
-        next_z_index = (idx[0], idx[1], idx[2]+1-self.mat_dist.size[2])
-        gammazero = (self.mat_dist.inv_mass_z(previous_z_index) + 2.0*self.mat_dist.inv_mass_z(idx) +
-                     self.mat_dist.inv_mass_z(next_z_index)) / self.mat_dist.increments[2]**2
-
-        return units*0.25*(alphazero + betazero + gammazero) + self.pot_energy.values[idx]
+        return units*0.25*(sum(central_diffs)) + self.pot_energy.values[idx]
 
     #   real function dn4(i,j,k,X,V,para,sz,ag)
     #     implicit none
@@ -248,7 +244,7 @@ class SparseSolver(Engine):
 
     def solve(self):
         from scipy.sparse.linalg import eigsh
-        return eigsh(self.hamiltonian, k=2, which='SM')
+        return eigsh(self.hamiltonian, k=2, which='SM', ncv=100)
 
 
 #   subroutine wavefncmplx(nev,ncv,tol,maxitr,evec,eval,confined,para,n,ag,calc)

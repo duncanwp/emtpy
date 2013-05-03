@@ -10,12 +10,8 @@ class MaterialDistribution(object):
         self.materialA = ternary_material.materialA
         self.materialB = ternary_material.materialB
 
-    def inv_mass_xy(self, idx):
-        return (self.chi(idx)/self.materialA.effective_mass[0]) + ((1.0-self.chi(idx))/self.materialB.effective_mass[0])
-
-    def inv_mass_z(self, idx):
-        return (self.chi(idx)/self.materialA.effective_mass[1]) + ((1.0-self.chi(idx))/self.materialB.effective_mass[1])
-
+    def inv_mass(self, idx, dim):
+        return (self.chi(idx)/self.materialA.effective_mass[dim]) + ((1.0-self.chi(idx))/self.materialB.effective_mass[dim])
 
 class Distribution(PhysicalGrid):
     pass

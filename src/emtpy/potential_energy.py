@@ -10,6 +10,7 @@ class OneDWell(APotentialEnergy):
 
     def __init__(self, width, depth, shape, size):
         import numpy as np
+        from utils import heaviside
 
         # Create a new grid for the potential
         super(OneDWell, self).__init__(shape, size)
@@ -17,15 +18,7 @@ class OneDWell(APotentialEnergy):
         # Define r_0, the center of the well, to be the middle of the grid
         r_0 = size[0] / 2.0
 
-        def _single_well(idx):
-            """
-                Function to evaluate the quantum well potential on any index in a 3-D array
-            """
-            from utils import heaviside
-            x = self.coord(idx)
-            return 0.0 - depth*heaviside(abs(x-r_0)-width/2.0)
-
-        self.values = np.fromfunction(_single_well, shape)
+        self.values = 0.0 - depth*heaviside(width/2.0-abs(self.coord_array(0)-r_0))
 
 
 class Harmonic(APotentialEnergy):

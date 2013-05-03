@@ -24,8 +24,8 @@ class PhysicalGrid(object):
         return self.shape == other.shape and self.size == other.size
 
     def coord_array(self, dim):
-        from numpy import array
-        return array(map(lambda x, y: x*y, self.increments[dim], range(self.size)))
+        from numpy import arange
+        return arange(self.shape[dim])*self.increments[dim]
 
     def find_index(self, coord):
         return tuple(map(lambda x, y: int(round(x/y)), coord, self.increments))
