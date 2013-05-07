@@ -54,8 +54,8 @@ class EngineTests(object):
 class ArpackTests(EngineTests):
 
     def __init__(self):
-        from emtpy.engine import SparseSolver
-        super(ArpackTests, self).__init__(SparseSolver)
+        from emtpy.engine import ARPACKSolver
+        super(ArpackTests, self).__init__(ARPACKSolver)
 
     @istest
     def test_one_d_well_energies(self):
