@@ -24,14 +24,14 @@ class ARPACK3DSolver(Engine):
         import numpy as np
         from scipy.sparse.coo import coo_matrix
 
-        i_index = np.zeros(self.pot_energy.no_elements*4)
-        j_index = np.zeros(self.pot_energy.no_elements*4)
-        data = np.zeros(self.pot_energy.no_elements*4)
+        i_index = np.zeros(self.pot_energy.no_elements*7)
+        j_index = np.zeros(self.pot_energy.no_elements*7)
+        data = np.zeros(self.pot_energy.no_elements*7)
 
         row = 0
         # Loop over the potential energy grid. Every element in this array corresponds to a row in the Hamiltonaian
         for idx, val in np.ndenumerate(self.pot_energy.values):
-            non_zero_index = row*4
+            non_zero_index = row*7
 
             # Calculate where the offset matrix elements are in the hamiltonian
             idx_plus_x = ((idx[0]+1) % self.pot_energy.size[0], idx[1], idx[2])
@@ -51,15 +51,27 @@ class ARPACK3DSolver(Engine):
             i_index[non_zero_index+1] = row
             j_index[non_zero_index+1] = n_x
 
+            data[non_zero_index+4] = self.an3(idx_plus_x)
+            i_index[non_zero_index+4] = n_x
+            j_index[non_zero_index+4] = row
+
             # Calculate the y offset diagonal
             data[non_zero_index+2] = self.bn3(idx_plus_y)
             i_index[non_zero_index+2] = row
             j_index[non_zero_index+2] = n_y
 
+            data[non_zero_index+5] = self.bn3(idx_plus_y)
+            i_index[non_zero_index+5] = n_y
+            j_index[non_zero_index+5] = row
+
             # Calculate the z offset diagonal
             data[non_zero_index+3] = self.cn3(idx_plus_z)
             i_index[non_zero_index+3] = row
             j_index[non_zero_index+3] = n_z
+
+            data[non_zero_index+6] = self.cn3(idx_plus_z)
+            i_index[non_zero_index+6] = n_z
+            j_index[non_zero_index+6] = row
 
             row += 1
 
