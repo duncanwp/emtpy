@@ -24,16 +24,18 @@ class SparseSolver(Engine):
         import numpy as np
         from scipy.sparse.coo import coo_matrix
 
-        i_index = np.zeros(self.pot_energy.no_elements*4)
-        j_index = np.zeros(self.pot_energy.no_elements*4)
-        data = np.zeros(self.pot_energy.no_elements*4)
+        n_dims = len(self.pot_energy.size)
+        non_zeros = self.pot_energy.no_elements*(1+(2*n_dims))
+        i_index = np.zeros(non_zeros)
+        j_index = np.zeros(non_zeros)
+        data = np.zeros(non_zeros)
 
         off_diag_elements = [self.an3, self.bn3, self.cn3]
 
         row = 0
         # Loop over the potential energy grid. Every element in this array corresponds to a row in the Hamiltonaian
         for idx, val in np.ndenumerate(self.pot_energy.values):
-            non_zero_index = row*4
+            non_zero_index = row*(1+n_dims)
 
             # Calculate where the offset matrix elements are in the hamiltonian
             idx_plus = []
@@ -61,6 +63,11 @@ class SparseSolver(Engine):
                 central_diffs.append(self.central_dif(idx_minus, idx, idx_plus, dim))
                 i_index[non_zero_index+dim] = row
                 j_index[non_zero_index+dim] = n[dim]
+
+                data[non_zero_index+dim+n_dims] = data[non_zero_index+dim]
+                i_index[non_zero_index+dim+n_dims] = n[dim]
+                j_index[non_zero_index+dim+n_dims] = row
+
 
             # Calculate the diagonal
             data[non_zero_index] = self.dn4(idx, central_diffs)
@@ -244,7 +251,7 @@ class SparseSolver(Engine):
 
     def solve(self):
         from scipy.sparse.linalg import eigsh
-        return eigsh(self.hamiltonian, k=2, which='SM', ncv=100)
+        return eigsh(self.hamiltonian, k=6, sigma=-1.0, which='LM', ncv=1000, tol=1e-4)
 
 
 #   subroutine wavefncmplx(nev,ncv,tol,maxitr,evec,eval,confined,para,n,ag,calc)
