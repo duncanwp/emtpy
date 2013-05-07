@@ -18,7 +18,112 @@ class Engine(object):
         pass
 
 
-class SparseSolver(Engine):
+class ARPACK3DSolver(Engine):
+
+    def _create_hamiltonian(self):
+        import numpy as np
+        from scipy.sparse.coo import coo_matrix
+
+        i_index = np.zeros(self.pot_energy.no_elements*7)
+        j_index = np.zeros(self.pot_energy.no_elements*7)
+        data = np.zeros(self.pot_energy.no_elements*7)
+
+        row = 0
+        # Loop over the potential energy grid. Every element in this array corresponds to a row in the Hamiltonaian
+        for idx, val in np.ndenumerate(self.pot_energy.values):
+            non_zero_index = row*7
+
+            # Calculate where the offset matrix elements are in the hamiltonian
+            idx_plus_x = ((idx[0]+1) % self.pot_energy.size[0], idx[1], idx[2])
+            idx_plus_y = (idx[0], (idx[1]+1) % self.pot_energy.size[1], idx[2])
+            idx_plus_z = (idx[0], idx[1], (idx[2]+1) % self.pot_energy.size[2])
+            n_x = self.pot_energy.getn(*idx_plus_x)
+            n_y = self.pot_energy.getn(*idx_plus_y)
+            n_z = self.pot_energy.getn(*idx_plus_z)
+
+            # Calculate the diagonal
+            data[non_zero_index] = self.dn4(idx)
+            i_index[non_zero_index] = row
+            j_index[non_zero_index] = row
+
+            # Calculate the x offset diagonal
+            data[non_zero_index+1] = self.an3(idx_plus_x)
+            i_index[non_zero_index+1] = row
+            j_index[non_zero_index+1] = n_x
+
+            data[non_zero_index+4] = self.an3(idx_plus_x)
+            i_index[non_zero_index+4] = n_x
+            j_index[non_zero_index+4] = row
+
+            # Calculate the y offset diagonal
+            data[non_zero_index+2] = self.bn3(idx_plus_y)
+            i_index[non_zero_index+2] = row
+            j_index[non_zero_index+2] = n_y
+
+            data[non_zero_index+5] = self.bn3(idx_plus_y)
+            i_index[non_zero_index+5] = n_y
+            j_index[non_zero_index+5] = row
+
+            # Calculate the z offset diagonal
+            data[non_zero_index+3] = self.cn3(idx_plus_z)
+            i_index[non_zero_index+3] = row
+            j_index[non_zero_index+3] = n_z
+
+            data[non_zero_index+6] = self.cn3(idx_plus_z)
+            i_index[non_zero_index+6] = n_z
+            j_index[non_zero_index+6] = row
+
+            row += 1
+
+        # Create the sparse matrix
+        coo = coo_matrix((data, (i_index, j_index)), shape=(self.pot_energy.no_elements, self.pot_energy.no_elements))
+
+        # Convert to compressed row format
+        return coo.tocsr()
+
+    def an3(self, idx):
+        from constants import units
+        previous_x_index = (idx[0]-1, idx[1], idx[2])
+        grid_spacing = self.mat_dist.increments[0]
+        return (-units / (4.0*(grid_spacing**2)))*(self.mat_dist.inv_mass_xy(idx) + self.mat_dist.inv_mass_xy(previous_x_index))
+
+    def bn3(self, idx):
+        from constants import units
+        previous_y_index = (idx[0], idx[1]-1, idx[2])
+        grid_spacing = self.mat_dist.increments[1]
+        return (-units / (4.0*(grid_spacing**2)))*(self.mat_dist.inv_mass_xy(idx) + self.mat_dist.inv_mass_xy(previous_y_index))
+
+    def cn3(self, idx):
+        from constants import units
+        previous_z_index = (idx[0], idx[1], idx[2]-1)
+        grid_spacing = self.mat_dist.increments[2]
+        return (-units / (4.0*(grid_spacing**2)))*(self.mat_dist.inv_mass_z(idx) + self.mat_dist.inv_mass_z(previous_z_index))
+
+    def dn4(self, idx):
+        from constants import units
+        previous_x_index = (idx[0]-1, idx[1], idx[2])
+        next_x_index = (idx[0]+1-self.mat_dist.size[0], idx[1], idx[2])
+        alphazero = (self.mat_dist.inv_mass_xy(previous_x_index) + 2.0*self.mat_dist.inv_mass_xy(idx) +
+                     self.mat_dist.inv_mass_xy(next_x_index)) / self.mat_dist.increments[0]**2
+
+        previous_y_index = (idx[0], idx[1]-1, idx[2])
+        next_y_index = (idx[0], idx[1]+1-self.mat_dist.size[1], idx[2])
+        betazero = (self.mat_dist.inv_mass_xy(previous_y_index) + 2.0*self.mat_dist.inv_mass_xy(idx) +
+                    self.mat_dist.inv_mass_xy(next_y_index)) / self.mat_dist.increments[1]**2
+
+        previous_z_index = (idx[0], idx[1], idx[2]-1)
+        next_z_index = (idx[0], idx[1], idx[2]+1-self.mat_dist.size[2])
+        gammazero = (self.mat_dist.inv_mass_z(previous_z_index) + 2.0*self.mat_dist.inv_mass_z(idx) +
+                     self.mat_dist.inv_mass_z(next_z_index)) / self.mat_dist.increments[2]**2
+
+        return units*0.25*(alphazero + betazero + gammazero) + self.pot_energy.values[idx]
+
+    def solve(self):
+        from scipy.sparse.linalg import eigsh
+        return eigsh(self.hamiltonian)
+
+
+class ARPACKSolver(Engine):
 
     def _create_hamiltonian(self):
         import numpy as np
