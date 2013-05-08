@@ -788,78 +788,15 @@ class ARPACKSolver(Engine):
 
 class ARPACKOriginal(Engine):
 
-    def _create_hamiltonian(self):
-        import numpy as np
-        from scipy.sparse.coo import coo_matrix
-
-        n_dims = len(self.pot_energy.size)
-        non_zeros = self.pot_energy.no_elements*(1+(2*n_dims))
-        i_index = np.zeros(non_zeros)
-        j_index = np.zeros(non_zeros)
-        data = np.zeros(non_zeros)
-
-        off_diag_elements = [self.an3, self.bn3, self.cn3]
-
-        row = 0
-        # Loop over the potential energy grid. Every element in this array corresponds to a row in the Hamiltonaian
-        for idx, val in np.ndenumerate(self.pot_energy.values):
-            non_zero_index = row*(1+n_dims)
-
-            # Calculate where the offset matrix elements are in the hamiltonian
-            idx_plus = []
-            idx_minus = []
-            central_diffs = []
-            n = []
-            for dim in range(len(idx)):
-                idx_plus.append(list(idx))
-                idx_plus[dim][dim] = (idx[dim] + 1) % self.pot_energy.size[dim]
-                idx_minus.append(list(idx))
-                idx_minus[dim][dim] = (idx[dim] - 1) % self.pot_energy.size[dim]
-
-                n.append(self.pot_energy.getn(idx_plus[dim]))
-            # idx_plus_x = ((idx[0]+1) % self.pot_energy.size[0], idx[1], idx[2])
-            # idx_plus_y = (idx[0], (idx[1]+1) % self.pot_energy.size[1], idx[2])
-            # idx_plus_z = (idx[0], idx[1], (idx[2]+1) % self.pot_energy.size[2])
-            # n_x = self.pot_energy.getn(idx_plus_x)
-            # n_y = self.pot_energy.getn(idx_plus_y)
-            # n_z = self.pot_energy.getn(idx_plus_z)
-
-
-            # Calculate the offset diagonals
-            for dim, idx_p in enumerate(idx_plus):
-                data[non_zero_index+dim] = off_diag_elements[dim](idx_p, idx_minus)
-                central_diffs.append(self.central_dif(idx_minus, idx, idx_plus, dim))
-                i_index[non_zero_index+dim] = row
-                j_index[non_zero_index+dim] = n[dim]
-
-                data[non_zero_index+dim+n_dims] = data[non_zero_index+dim]
-                i_index[non_zero_index+dim+n_dims] = n[dim]
-                j_index[non_zero_index+dim+n_dims] = row
-
-
-            # Calculate the diagonal
-            data[non_zero_index] = self.dn4(idx, central_diffs)
-            i_index[non_zero_index] = row
-            j_index[non_zero_index] = row
-
-
-            # # Calculate the y offset diagonal
-            # data[non_zero_index+2] = self.bn3(idx_plus_y)
-            # i_index[non_zero_index+2] = row
-            # j_index[non_zero_index+2] = n_y
-            #
-            # # Calculate the z offset diagonal
-            # data[non_zero_index+3] = self.cn3(idx_plus_z)
-            # i_index[non_zero_index+3] = row
-            # j_index[non_zero_index+3] = n_z
-
-            row += 1
-
-        # Create the sparse matrix
-        coo = coo_matrix((data, (i_index, j_index)), shape=(self.pot_energy.no_elements, self.pot_energy.no_elements))
-
-        # Convert to compressed row format
-        return coo.tocsr()
+    def __init__(self, mat_dist, potential_energy):
+        # This check doesn't currently work with MockMaterialDistribution so I might need a better one
+#        if not mat_dist.compatible_grid(potential_energy):
+#            raise ValueError
+        from scipy.sparse.linalg import LinearOperator
+        self.mat_dist = mat_dist
+        self.pot_energy = potential_energy
+        self.ija, self.sa = self._create_hamiltonian()
+        self.lin_operator = LinearOperator((self.pot_energy.no_elements, self.pot_energy.no_elements), self.av)
 
     def _create_hamiltonian(self):
         import numpy as np
@@ -871,8 +808,8 @@ class ARPACKOriginal(Engine):
         ija = np.zeros(self.pot_energy.no_elements*4+1, dtype=np.int8)
         sa = np.zeros(self.pot_energy.no_elements*4+1, dtype=np.float64)
 
-        k = self.pot_energy.no_elements + 1
-        ija[1] = self.pot_energy.no_elements + 2
+        k = self.pot_energy.no_elements
+        ija[0] = self.pot_energy.no_elements + 1
 
         # Loop over the potential energy grid. Every element in this array corresponds to a row in the Hamiltonaian
         for idx, val in np.ndenumerate(self.pot_energy.values):
@@ -884,15 +821,15 @@ class ARPACKOriginal(Engine):
             idx_plus_x = ((idx[0]+1) % self.pot_energy.size[0], idx[1], idx[2])
             idx_plus_y = (idx[0], (idx[1]+1) % self.pot_energy.size[1], idx[2])
             idx_plus_z = (idx[0], idx[1], (idx[2]+1) % self.pot_energy.size[2])
-            n_x = self.pot_energy.getn(*idx_plus_x)
-            n_y = self.pot_energy.getn(*idx_plus_y)
-            n_z = self.pot_energy.getn(*idx_plus_z)
+            n_x = self.pot_energy.getn(idx_plus_x)
+            n_y = self.pot_energy.getn(idx_plus_y)
+            n_z = self.pot_energy.getn(idx_plus_z)
 
             for p in range(3):
                 H = 0.0
                 if (p == 1):
                    H = self.an3(idx_plus_x)
-                   n = self.pot_energy.getn(*idx_plus_x)
+                   n = self.pot_energy.getn(idx_plus_x)
                    # if (l == sz(1)-1) then
                    #    H = an3(0,m,q,X,para,sz,ag)
                    #    call getn(n,0,m,q,sz)
@@ -902,7 +839,7 @@ class ARPACKOriginal(Engine):
                    # end if
                 elif (p == 2):
                    H = self.bn3(idx_plus_y)
-                   n = self.pot_energy.getn(*idx_plus_y)
+                   n = self.pot_energy.getn(idx_plus_y)
 
                    # if (m == sz(2)-1) then
                    #    H = bn3(l,0,q,X,para,sz,ag)
@@ -913,7 +850,7 @@ class ARPACKOriginal(Engine):
                    # end if
                 elif (p == 3):
                    H = self.cn3(idx_plus_z)
-                   n = self.pot_energy.getn(*idx_plus_z)
+                   n = self.pot_energy.getn(idx_plus_z)
 
                    # if (q == sz(3)-1) then
                    #    H = cn3(l,m,0,X,para,sz,ag)
@@ -937,6 +874,7 @@ class ARPACKOriginal(Engine):
         print "Space required without symmetric storage: ", (self.pot_energy.no_elements*7)+1
         print "Space required with standard array storage: ", self.pot_energy.no_elements**2
 
+        return ija, sa
 
  #    k = product(sz) + 1
  #    ija(1) = product(sz) + 2
@@ -1105,8 +1043,8 @@ class ARPACKOriginal(Engine):
     #
 
     def solve(self):
-        from scipy.sparse.linalg import eigsh
-        return eigsh(self.hamiltonian, k=6, sigma=-1.0, which='LM', ncv=1000, tol=1e-4)
+        from scipy.sparse.linalg import eigs
+        return eigs(self.lin_operator, k=2, which='SR', ncv=1000, tol=1e-5)
 
 
 #   subroutine wavefncmplx(nev,ncv,tol,maxitr,evec,eval,confined,para,n,ag,calc)
@@ -1480,6 +1418,21 @@ class ARPACKOriginal(Engine):
 #     evec = cmplx(v(:,:nev),0.0d0)*normalization(ag)
 #   end subroutine wavefn
 
+    def av(self, v):
+        import numpy as np
+        n = len(v)
+        y = np.zeros(n, dtype=np.float64)
+
+        for i in range(n):
+           y[i] = self.sa[i]*v[i]
+           for j in range (self.ija[i], (self.ija[i+1]-2)):
+              y[i] += self.sa[j]*v[self.ija[j]]
+
+        for i in range(n):
+           for j in range (self.ija[i], (self.ija[i+1]-2)):
+              y[self.ija[j]] = y[self.ija[j]] + self.sa[j]*v[i] #Use for symetric storage
+
+        return y
 
  #  subroutine av(n,x,y)
  #    implicit none
