@@ -1,5 +1,6 @@
 __author__ = 'duncan'
 
+
 class YaleSparse(object):
 
     def __init__(self, ija, sa):
@@ -139,11 +140,13 @@ class YaleSparseSymmetric(object):
         n = len(v)
         y = np.zeros(n, dtype=np.float64)
 
+        if self.ija[0] != n + 1:
+            raise ValueError("Mismatched vector and matrix")
+
         for i in range(n):
             y[i] = self.sa[i] * v[i]
             for k in range(self.ija[i], (self.ija[i+1])):
                 y[i] += self.sa[k] * v[self.ija[k]]
-
 
         for i in range(n):
             for k in range(self.ija[i], (self.ija[i+1])):

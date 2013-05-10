@@ -10,6 +10,7 @@ class TestPhysicalGrid(unittest.TestCase):
         values = np.arange(9*10*11)
         # The 3d grid deliberately has integer physical sizes to test the handling of it
         self.test_3d_grid = PhysicalGrid((9, 10, 11), (5, 5, 5), values.reshape((9, 10, 11)))
+        self.test_1d_3d_grid = PhysicalGrid((9, 1, 1), (5, 1, 1), np.arange(9))
         self.test_2d_grid = PhysicalGrid((9, 10), (5.0, 5.0), np.arange(90).reshape((9, 10)))
         self.test_1d_grid = PhysicalGrid((9,), (5.0,), np.arange(9))
 
@@ -27,6 +28,13 @@ class TestPhysicalGrid(unittest.TestCase):
         self.assertEqual(self.test_3d_grid.getn((0, 0 ,0)), 0)
         self.assertEqual(self.test_3d_grid.getn((8, 9, 10)), self.test_3d_grid.no_elements-1)
         self.assertEqual(self.test_3d_grid.getn(((8 + 1) % 9, 9, 10)), 109)
+
+    def test_getn_1d_3d(self):
+        self.assertEqual(self.test_1d_3d_grid.getn((0, 0 ,0)), 0)
+        self.assertEqual(self.test_1d_3d_grid.getn((8, 0, 0)), self.test_1d_3d_grid.no_elements-1)
+        self.assertEqual(self.test_1d_3d_grid.getn(((8 + 1) % 9, 0, 0)), 0)
+        self.assertEqual(self.test_1d_3d_grid.getn((0, (0 + 1) % 1, 0)), 0)
+        self.assertEqual(self.test_1d_3d_grid.getn((5, (0 + 1) % 1, 0)), 5)
 
     def test_get_ijk_1d(self):
         self.assertEqual(self.test_1d_grid.getijk(0), (0,))

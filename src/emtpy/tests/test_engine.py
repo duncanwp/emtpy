@@ -8,8 +8,9 @@ class MockMaterialDistribution(MaterialDistribution):
     def __init__(self, eff_mass=None):
         from emtpy.constants import me
         self.eff_mass = (0.1, 0.1) if eff_mass is None else eff_mass
-        self.increments = (1, 1, 1)
-        self.size = (1, 1, 1)
+        self.increments = (1, 1, 10)
+        self.size = (1, 1, 10)
+        self.shape = (1, 1, 100)
 
     def inv_mass(self, idx, dim):
         return 1.0/self.eff_mass[dim]
@@ -37,7 +38,7 @@ class EngineTests(object):
         self.engine = self.TestEngine(self.mat_dist, self.potential)
 
     def setup_three_d_one_d_well(self):
-        self.potential = OneDWell(2.0, 1.0, (100, 1, 1), (10.0, 1.0, 1.0))
+        self.potential = OneDWell(2.0, 1.0, (1, 1, 100), (1.0, 1.0, 10.0))
         self.mat_dist = MockMaterialDistribution()
         self.engine = self.TestEngine(self.mat_dist, self.potential)
 

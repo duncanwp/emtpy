@@ -256,12 +256,13 @@ class ARPACKOriginal(Engine):
         for idx, val in np.ndenumerate(self.pot_energy.values):
             j = self.pot_energy.getn(idx)
             n = 0
+            # Assign the diagonal
             sa[j] = self.dn4(idx)
 
             # Calculate where the offset matrix elements are in the hamiltonian
-            idx_plus_x = ((idx[0]+1) % self.pot_energy.size[0], idx[1], idx[2])
-            idx_plus_y = (idx[0], (idx[1]+1) % self.pot_energy.size[1], idx[2])
-            idx_plus_z = (idx[0], idx[1], (idx[2]+1) % self.pot_energy.size[2])
+            idx_plus_x = ((idx[0]+1) % self.pot_energy.shape[0], idx[1], idx[2])
+            idx_plus_y = (idx[0], (idx[1]+1) % self.pot_energy.shape[1], idx[2])
+            idx_plus_z = (idx[0], idx[1], (idx[2]+1) % self.pot_energy.shape[2])
             n_x = self.pot_energy.getn(idx_plus_x)
             n_y = self.pot_energy.getn(idx_plus_y)
             n_z = self.pot_energy.getn(idx_plus_z)
@@ -317,13 +318,11 @@ class ARPACKOriginal(Engine):
 
         return ija, sa
 
-
     def an3(self, idx):
         from constants import units
         previous_x_index = (idx[0]-1, idx[1], idx[2])
         grid_spacing = self.mat_dist.increments[0]
         return (-units / (4.0*(grid_spacing**2)))*(self.mat_dist.inv_mass_xy(idx) + self.mat_dist.inv_mass_xy(previous_x_index))
-
 
     def bn3(self, idx):
         from constants import units
@@ -331,53 +330,52 @@ class ARPACKOriginal(Engine):
         grid_spacing = self.mat_dist.increments[1]
         return (-units / (4.0*(grid_spacing**2)))*(self.mat_dist.inv_mass_xy(idx) + self.mat_dist.inv_mass_xy(previous_y_index))
 
-
     def cn3(self, idx):
         from constants import units
         previous_z_index = (idx[0], idx[1], idx[2]-1)
         grid_spacing = self.mat_dist.increments[2]
         return (-units / (4.0*(grid_spacing**2)))*(self.mat_dist.inv_mass_z(idx) + self.mat_dist.inv_mass_z(previous_z_index))
 
-
     def dn4(self, idx):
         from constants import units
         previous_x_index = (idx[0]-1, idx[1], idx[2])
-        next_x_index = (idx[0]+1-self.mat_dist.size[0], idx[1], idx[2])
+        next_x_index = (idx[0]+1-self.mat_dist.shape[0], idx[1], idx[2])
         alphazero = (self.mat_dist.inv_mass_xy(previous_x_index) + 2.0*self.mat_dist.inv_mass_xy(idx) +
                      self.mat_dist.inv_mass_xy(next_x_index)) / self.mat_dist.increments[0]**2
 
         previous_y_index = (idx[0], idx[1]-1, idx[2])
-        next_y_index = (idx[0], idx[1]+1-self.mat_dist.size[1], idx[2])
+        next_y_index = (idx[0], idx[1]+1-self.mat_dist.shape[1], idx[2])
         betazero = (self.mat_dist.inv_mass_xy(previous_y_index) + 2.0*self.mat_dist.inv_mass_xy(idx) +
                     self.mat_dist.inv_mass_xy(next_y_index)) / self.mat_dist.increments[1]**2
 
         previous_z_index = (idx[0], idx[1], idx[2]-1)
-        next_z_index = (idx[0], idx[1], idx[2]+1-self.mat_dist.size[2])
+        next_z_index = (idx[0], idx[1], idx[2]+1-self.mat_dist.shape[2])
         gammazero = (self.mat_dist.inv_mass_z(previous_z_index) + 2.0*self.mat_dist.inv_mass_z(idx) +
                      self.mat_dist.inv_mass_z(next_z_index)) / self.mat_dist.increments[2]**2
 
         return units*0.25*(alphazero + betazero + gammazero) + self.pot_energy.values[idx]
 
-
-
     def solve(self):
         from scipy.sparse.linalg import eigs
         return eigs(self.lin_operator, k=2, which='SR', ncv=1000, tol=1e-5)
-
 
     def av(self, v):
         import numpy as np
         n = len(v)
         y = np.zeros(n, dtype=np.float64)
 
-        for i in range(n):
-           y[i] = self.sa[i]*v[i]
-           for j in range (self.ija[i], (self.ija[i+1]-2)):
-              y[i] += self.sa[j]*v[self.ija[j]]
+        if self.ija[0] != n + 1:
+            raise ValueError("Mismatched vector and matrix")
 
         for i in range(n):
-           for j in range (self.ija[i], (self.ija[i+1]-2)):
-              y[self.ija[j]] = y[self.ija[j]] + self.sa[j]*v[i] #Use for symetric storage
+            y[i] = self.sa[i]*v[i]
+            for j in range(self.ija[i], (self.ija[i+1])):
+                y[i] += self.sa[j]*v[self.ija[j]]
+
+        # Use for symmetric storage
+        for i in range(n):
+            for j in range(self.ija[i], (self.ija[i+1])):
+                y[self.ija[j]] += self.sa[j]*v[i]
 
         return y
 

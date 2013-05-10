@@ -1,6 +1,6 @@
 __author__ = 'pard'
 from nose.tools import istest, eq_
-
+from numpy.testing.utils import assert_array_equal
 
 @istest
 def test_mod():
@@ -42,3 +42,12 @@ def test_mod_indexing():
     eq_(test_array[9+1-len(test_array)], 0)
     # if I want the element two back from 0 I want to end up with an index of 8:
     eq_(test_array[0-2], 8)
+
+@istest
+def test_tile():
+    import numpy as np
+
+    shape = (10, 1, 1)
+    one_d_vector = np.arange(10)
+    values = np.tile(one_d_vector, (shape[2], shape[1], shape[0]))
+    eq_(values.shape, shape)
