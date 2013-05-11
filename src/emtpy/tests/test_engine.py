@@ -1,19 +1,53 @@
 __author__ = 'pard'
 from nose.tools import istest, eq_
-from emtpy.potential_energy import Harmonic, OneDWell
+from numpy.testing.utils import assert_almost_equal
+from emtpy.potential_energy import Harmonic, OneDWell, ThreeDOneDWell
 from emtpy.material_distribution import MaterialDistribution
 
-class MockMaterialDistribution(MaterialDistribution):
 
-    def __init__(self, eff_mass=None):
+def infinite_square_box_energy(n, L):
+    from emtpy.constants import hbar, me, eV
+    from math import pi
+    return ((hbar**2 * pi**2 * n**2)/(2.0*me*L**2))/eV
+
+
+def finite_square_box_energies(L, V_0, tol=1.0E-3):
+    from emtpy.constants import me, eV, hbar
+    from numpy import sqrt, tan, arange
+    from scipy.optimize import fsolve
+
+    u_0_sq = (me * L**2 * V_0**2)/(2 * hbar**2)
+
+    def symmetric_solution(v):
+        return sqrt(u_0_sq - v**2) - v * tan(v)
+
+    def anti_symmetric_solution(v):
+        return sqrt(u_0_sq - v**2) + v / tan(v)
+
+    def energy(v):
+        return ((2.0 * hbar**2 * v**2)/(me*L**2))/eV
+
+
+    solutions = energy(fsolve(symmetric_solution, arange(4)))
+
+    v = sqrt(u_0_sq)
+
+
+
+    return solutions
+
+class MockMaterialDistribution(object):
+
+    def __init__(self,grid,  eff_mass=None):
         from emtpy.constants import me
-        self.eff_mass = (0.1, 0.1) if eff_mass is None else eff_mass
-        self.increments = (1, 1, 10)
-        self.size = (1, 1, 10)
-        self.shape = (1, 1, 100)
+        self.__eff_mass = (1.0, 1.0) if eff_mass is None else eff_mass
+        self.chi = grid
+        # self.increments = (1, 1, 10)
+        # self.size = (1, 1, 10)
+        # self.shape = (1, 1, 100)
 
     def inv_mass(self, idx, dim):
-        return 1.0/self.eff_mass[dim]
+        return 1.0/self.__eff_mass[dim]
 
     def inv_mass_xy(self, idx):
         return self.inv_mass(idx, 0)
@@ -28,18 +62,21 @@ class EngineTests(object):
         self.TestEngine = engine
 
     def setup_harmonic(self):
+        from emtpy.grid import PhysicalGrid
         self.potential = Harmonic(1.0, (100, 100, 100), (10.0, 10.0, 10.0))
         self.mat_dist = MockMaterialDistribution()
         self.engine = self.TestEngine(self.mat_dist, self.potential)
 
     def setup_one_d_well(self):
-        self.potential = OneDWell(4.0, 1.0, (100,), (10.0,))
-        self.mat_dist = MockMaterialDistribution()
+        from emtpy.grid import PhysicalGrid
+        self.potential = OneDWell(2.0, 1.0, (100,), (10.0,))
+        self.mat_dist = MockMaterialDistribution(PhysicalGrid((100,), (10.0,)))
         self.engine = self.TestEngine(self.mat_dist, self.potential)
 
     def setup_three_d_one_d_well(self):
-        self.potential = OneDWell(2.0, 1.0, (1, 1, 100), (1.0, 1.0, 10.0))
-        self.mat_dist = MockMaterialDistribution()
+        from emtpy.grid import PhysicalGrid
+        self.potential = ThreeDOneDWell(2.0, 1000.0, (1, 1, 301), (1.0, 1.0, 10.0))
+        self.mat_dist = MockMaterialDistribution(PhysicalGrid((1, 1, 301), (1.0, 1.0, 10.0)))
         self.engine = self.TestEngine(self.mat_dist, self.potential)
 
     @istest
@@ -54,15 +91,17 @@ class EngineTests(object):
     def test_one_d_well_energies(self):
         from emtpy.constants import hbarev
         import matplotlib.pyplot as plt
-        self.setup_three_d_one_d_well()
+        self.setup_one_d_well()
         vals, vectors = self.engine.solve()
         #pot = self.potential.values[0,0,:]
+        comp_energies = finite_square_box_energies(2.0E-9, 1000.0)
+        assert_almost_equal(1000.0-abs(vals[0]), infinite_square_box_energy(1, 2.0E-9), 1)
+        assert_almost_equal(1000.0-abs(vals[1]), infinite_square_box_energy(2, 2.0E-9), 1)
         plt.plot(self.potential.values[0,0,:])
         plt.plot(vectors[:, 0]+vals[0])
         plt.plot(vectors[:, 1]+vals[1])
+
         plt.show()
-        eq_(vals[0], hbarev*1)
-        eq_(vals[1], hbarev*2)
 
 
 
@@ -85,4 +124,20 @@ class ArpackOriginalTests(EngineTests):
 
     @istest
     def test_one_d_well_energies(self):
-        super(ArpackOriginalTests, self).test_one_d_well_energies()
+        from emtpy.constants import hbarev
+        import matplotlib.pyplot as plt
+        self.setup_three_d_one_d_well()
+        vals, vectors = self.engine.solve()
+        #pot = self.potential.values[0,0,:]
+        comp_energies = finite_square_box_energies(2.0E-9, 1000.0)
+        assert_almost_equal(1000.0-abs(vals[0]), infinite_square_box_energy(1, 2.0E-9), 1)
+        assert_almost_equal(1000.0-abs(vals[1]), infinite_square_box_energy(2, 2.0E-9), 1)
+        plt.plot(self.potential.values[0,0,:])
+        plt.plot(vectors[:, 0]+vals[0])
+        plt.plot(vectors[:, 1]+vals[1])
+
+        plt.show()
+
+    # @istest
+    # def test_one_d_well_energies(self):
+    #     super(ArpackOriginalTests, self).test_one_d_well_energies()

@@ -149,9 +149,9 @@ class ARPACKSolver(Engine):
             n = []
             for dim in range(len(idx)):
                 idx_plus.append(list(idx))
-                idx_plus[dim][dim] = (idx[dim] + 1) % self.pot_energy.size[dim]
+                idx_plus[dim][dim] = (idx[dim] + 1) % self.pot_energy.shape[dim]
                 idx_minus.append(list(idx))
-                idx_minus[dim][dim] = (idx[dim] - 1) % self.pot_energy.size[dim]
+                idx_minus[dim][dim] = (idx[dim] - 1) % self.pot_energy.shape[dim]
 
                 n.append(self.pot_energy.getn(idx_plus[dim]))
             # idx_plus_x = ((idx[0]+1) % self.pot_energy.size[0], idx[1], idx[2])
@@ -200,32 +200,31 @@ class ARPACKSolver(Engine):
 
     def an3(self, idx, previous_x_index):
         from constants import units
-        grid_spacing = self.mat_dist.increments[0]
+        grid_spacing = self.mat_dist.chi.increments[0]
         return (-units / (4.0*(grid_spacing**2)))*(self.mat_dist.inv_mass(idx, 0) + self.mat_dist.inv_mass(previous_x_index, 0))
 
     def bn3(self, idx, previous_y_index):
         from constants import units
-        grid_spacing = self.mat_dist.increments[1]
+        grid_spacing = self.mat_dist.chi.increments[1]
         return (-units / (4.0*(grid_spacing**2)))*(self.mat_dist.inv_mass(idx, 0) + self.mat_dist.inv_mass(previous_y_index, 0))
 
     def cn3(self, idx, previous_z_index):
         from constants import units
-        grid_spacing = self.mat_dist.increments[2]
+        grid_spacing = self.mat_dist.chi.increments[2]
         return (-units / (4.0*(grid_spacing**2)))*(self.mat_dist.inv_mass(idx, 1) + self.mat_dist.inv_mass(previous_z_index, 1))
 
     def central_dif(self, prev_idx, idx, next_idx, dim):
         return (self.mat_dist.inv_mass(prev_idx, dim) + 2.0*self.mat_dist.inv_mass(idx, dim) +
-                self.mat_dist.inv_mass(next_idx, dim)) / self.mat_dist.increments[dim]**2
+                self.mat_dist.inv_mass(next_idx, dim)) / self.mat_dist.chi.increments[dim]**2
 
     def dn4(self, idx, central_diffs):
         from constants import units
         return units*0.25*(sum(central_diffs)) + self.pot_energy.values[idx]
 
     def solve(self):
-        from scipy.sparse.linalg import eigsh
-        return eigsh(self.hamiltonian, k=6, sigma=-1.0, which='LM', ncv=1000, tol=1e-4)
-
-
+        from scipy.sparse.linalg import eigs
+        # return eigsh(self.hamiltonian, k=6, sigma=-1.0, which='LM', ncv=1000, tol=1e-4)
+        return eigs(self.hamiltonian, k=2, which='SR', ncv=1000, tol=1e-5)
 
 class ARPACKOriginal(Engine):
 
@@ -246,7 +245,7 @@ class ARPACKOriginal(Engine):
         n_dims = len(self.pot_energy.size)
         non_zeros = self.pot_energy.no_elements*(1+(2*n_dims))
 
-        ija = np.zeros(self.pot_energy.no_elements*4+1, dtype=np.int8)
+        ija = np.zeros(self.pot_energy.no_elements*4+1, dtype=np.int32)
         sa = np.zeros(self.pot_energy.no_elements*4+1, dtype=np.float64)
 
         k = self.pot_energy.no_elements
@@ -269,7 +268,7 @@ class ARPACKOriginal(Engine):
 
             for p in range(3):
                 H = 0.0
-                if (p == 1):
+                if p == 0:
                    H = self.an3(idx_plus_x)
                    n = self.pot_energy.getn(idx_plus_x)
                    # if (l == sz(1)-1) then
@@ -279,7 +278,7 @@ class ARPACKOriginal(Engine):
                    #    H = an3(l+1,m,q,X,para,sz,ag)
                    #    call getn(n,l+1,m,q,sz)
                    # end if
-                elif (p == 2):
+                elif p == 1:
                    H = self.bn3(idx_plus_y)
                    n = self.pot_energy.getn(idx_plus_y)
 
@@ -290,7 +289,7 @@ class ARPACKOriginal(Engine):
                    #    H = bn3(l,m+1,q,X,para,sz,ag)
                    #    call getn(n,l,m+1,q,sz)
                    # end if
-                elif (p == 3):
+                elif p == 2:
                    H = self.cn3(idx_plus_z)
                    n = self.pot_energy.getn(idx_plus_z)
 
@@ -302,10 +301,10 @@ class ARPACKOriginal(Engine):
                    #    call getn(n,l,m,q+1,sz)
                    # end if
                 # end if
-                if (H != 0.0):
-                   k = k + 1
-                   sa[k] = H
-                   ija[k] = n
+                if H != 0.0:
+                    k += 1
+                    sa[k] = H
+                    ija[k] = n
                 # end if
              # end do
             ija[j+1] = k + 1
@@ -321,43 +320,43 @@ class ARPACKOriginal(Engine):
     def an3(self, idx):
         from constants import units
         previous_x_index = (idx[0]-1, idx[1], idx[2])
-        grid_spacing = self.mat_dist.increments[0]
+        grid_spacing = self.mat_dist.chi.increments[0]
         return (-units / (4.0*(grid_spacing**2)))*(self.mat_dist.inv_mass_xy(idx) + self.mat_dist.inv_mass_xy(previous_x_index))
 
     def bn3(self, idx):
         from constants import units
         previous_y_index = (idx[0], idx[1]-1, idx[2])
-        grid_spacing = self.mat_dist.increments[1]
+        grid_spacing = self.mat_dist.chi.increments[1]
         return (-units / (4.0*(grid_spacing**2)))*(self.mat_dist.inv_mass_xy(idx) + self.mat_dist.inv_mass_xy(previous_y_index))
 
     def cn3(self, idx):
         from constants import units
         previous_z_index = (idx[0], idx[1], idx[2]-1)
-        grid_spacing = self.mat_dist.increments[2]
+        grid_spacing = self.mat_dist.chi.increments[2]
         return (-units / (4.0*(grid_spacing**2)))*(self.mat_dist.inv_mass_z(idx) + self.mat_dist.inv_mass_z(previous_z_index))
 
     def dn4(self, idx):
         from constants import units
         previous_x_index = (idx[0]-1, idx[1], idx[2])
-        next_x_index = (idx[0]+1-self.mat_dist.shape[0], idx[1], idx[2])
+        next_x_index = (idx[0]+1-self.mat_dist.chi.shape[0], idx[1], idx[2])
         alphazero = (self.mat_dist.inv_mass_xy(previous_x_index) + 2.0*self.mat_dist.inv_mass_xy(idx) +
-                     self.mat_dist.inv_mass_xy(next_x_index)) / self.mat_dist.increments[0]**2
+                     self.mat_dist.inv_mass_xy(next_x_index)) / self.mat_dist.chi.increments[0]**2
 
         previous_y_index = (idx[0], idx[1]-1, idx[2])
-        next_y_index = (idx[0], idx[1]+1-self.mat_dist.shape[1], idx[2])
+        next_y_index = (idx[0], idx[1]+1-self.mat_dist.chi.shape[1], idx[2])
         betazero = (self.mat_dist.inv_mass_xy(previous_y_index) + 2.0*self.mat_dist.inv_mass_xy(idx) +
-                    self.mat_dist.inv_mass_xy(next_y_index)) / self.mat_dist.increments[1]**2
+                    self.mat_dist.inv_mass_xy(next_y_index)) / self.mat_dist.chi.increments[1]**2
 
         previous_z_index = (idx[0], idx[1], idx[2]-1)
-        next_z_index = (idx[0], idx[1], idx[2]+1-self.mat_dist.shape[2])
+        next_z_index = (idx[0], idx[1], idx[2]+1-self.mat_dist.chi.shape[2])
         gammazero = (self.mat_dist.inv_mass_z(previous_z_index) + 2.0*self.mat_dist.inv_mass_z(idx) +
-                     self.mat_dist.inv_mass_z(next_z_index)) / self.mat_dist.increments[2]**2
+                     self.mat_dist.inv_mass_z(next_z_index)) / self.mat_dist.chi.increments[2]**2
 
         return units*0.25*(alphazero + betazero + gammazero) + self.pot_energy.values[idx]
 
     def solve(self):
         from scipy.sparse.linalg import eigs
-        return eigs(self.lin_operator, k=2, which='SR', ncv=1000, tol=1e-5)
+        return eigs(self.lin_operator, k=2, which='LM', ncv=1000, tol=1e-7)
 
     def av(self, v):
         import numpy as np
