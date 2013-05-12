@@ -356,7 +356,7 @@ class ARPACKOriginal(Engine):
 
     def solve(self):
         from scipy.sparse.linalg import eigs
-        return eigs(self.lin_operator, k=2, which='LM', ncv=1000, tol=1e-7)
+        return eigs(self.lin_operator, k=2, which='SR', ncv=1000, tol=1e-7)
 
     def av(self, v):
         import numpy as np

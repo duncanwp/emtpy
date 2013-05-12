@@ -18,7 +18,7 @@ class ThreeDOneDWell(APotentialEnergy):
         # Define r_0, the center of the well, to be the middle of the grid
         r_0 = size[2] / 2.0
 
-        one_d_vector = 0.0 - depth*heaviside(width/2.0-abs(self.coord_array(2)-r_0))
+        one_d_vector = depth - depth*heaviside(width/2.0-abs(self.coord_array(2)-r_0))
         self.values = np.array([[one_d_vector]])
         #self.values = np.tile(one_d_vector,(1, shape[1], shape[2]))
 
@@ -35,7 +35,7 @@ class OneDWell(APotentialEnergy):
         # Define r_0, the center of the well, to be the middle of the grid
         r_0 = size[0] / 2.0
 
-        one_d_vector = 0.0 - depth*heaviside(width/2.0-abs(self.coord_array(0)-r_0))
+        one_d_vector = depth - depth*heaviside(width/2.0-abs(self.coord_array(0)-r_0))
         # self.values = np.array([[one_d_vector]])
         self.values = one_d_vector
         #self.values = np.tile(one_d_vector,(1, shape[1], shape[2]))

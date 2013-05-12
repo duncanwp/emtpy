@@ -12,29 +12,45 @@ def infinite_square_box_energy(n, L):
 
 
 def finite_square_box_energies(L, V_0, tol=1.0E-3):
-    from emtpy.constants import me, eV, hbar
-    from numpy import sqrt, tan, arange
-    from scipy.optimize import fsolve
+    from emtpy.constants import me, eV, hbarev, hbar
+    from numpy import sqrt, tan, arange, linspace
+    from scipy.optimize import fsolve, bisect, brentq, newton
 
-    u_0_sq = (me * L**2 * V_0**2)/(2 * hbar**2)
+    u_0_sq = (me * L**2 * V_0**2)/(2 * hbarev**2)
+
+    #u_0_sq = 20
 
     def symmetric_solution(v):
-        return sqrt(u_0_sq - v**2) - v * tan(v)
+        from numpy import isnan
+        a = sqrt(u_0_sq - v**2)
+        where_are_nans = isnan(a)
+        a[where_are_nans] = 0.0
+        b = (v * tan(v))
+        val = a - b
+        return val
 
     def anti_symmetric_solution(v):
-        return sqrt(u_0_sq - v**2) + v / tan(v)
+        from numpy import isnan
+        a = sqrt(u_0_sq - v**2)
+        where_are_nans = isnan(a)
+        a[where_are_nans] = 0.0
+        return a + (v / tan(v))
 
     def energy(v):
-        return ((2.0 * hbar**2 * v**2)/(me*L**2))/eV
+        return ((2.0 * hbar**2 * v**2)/(me*L**2))
 
 
-    solutions = energy(fsolve(symmetric_solution, arange(4)))
+    #symm_sol = brentq(symmetric_solution, 0.0, sqrt(u_0_sq))
+    #anti_symm_sol = energy(bisect(anti_symmetric_solution, 0.0, u_0_sq))
+    # solutions, info, ierr, mesg = fsolve(symmetric_solution, sqrt(linspace(0.0 +  sqrt(u_0_sq)/5.0, sqrt(u_0_sq),5)), full_output=True)
+    # anti_solutions, info, ierr, mesg = fsolve(anti_symmetric_solution, sqrt(linspace(0.0 +  sqrt(u_0_sq)/5.0, sqrt(u_0_sq),5)), full_output=True)
+    solutions, info, ierr, mesg = fsolve(symmetric_solution, (linspace(0.0 +  (u_0_sq**2)/5.0, (u_0_sq**2),5)), full_output=True)
+    anti_solutions, info, ierr, mesg = fsolve(anti_symmetric_solution, (linspace(0.0 +  (u_0_sq**2)/5.0, (u_0_sq**2),5)), full_output=True)
 
-    v = sqrt(u_0_sq)
-
-
-
-    return solutions
+    sols = set(list(abs(solutions.round(5)))+list(abs(anti_solutions.round(5))))
+    energies = [energy(e) for e in sols if e < sqrt(u_0_sq)]
+    energies.sort()
+    return energies
 
 class MockMaterialDistribution(object):
 
@@ -75,8 +91,8 @@ class EngineTests(object):
 
     def setup_three_d_one_d_well(self):
         from emtpy.grid import PhysicalGrid
-        self.potential = ThreeDOneDWell(2.0, 1000.0, (1, 1, 301), (1.0, 1.0, 10.0))
-        self.mat_dist = MockMaterialDistribution(PhysicalGrid((1, 1, 301), (1.0, 1.0, 10.0)))
+        self.potential = ThreeDOneDWell(2.0, 10.0, (1, 1, 100), (1.0, 1.0, 10.0))
+        self.mat_dist = MockMaterialDistribution(PhysicalGrid((1, 1, 100), (1.0, 1.0, 10.0)))
         self.engine = self.TestEngine(self.mat_dist, self.potential)
 
     @istest
@@ -89,12 +105,12 @@ class EngineTests(object):
 
     @istest
     def test_one_d_well_energies(self):
-        from emtpy.constants import hbarev
+        from emtpy.constants import hbarev, eV
         import matplotlib.pyplot as plt
+        comp_energies = finite_square_box_energies(2.0E-9, 1000.0)
         self.setup_one_d_well()
         vals, vectors = self.engine.solve()
         #pot = self.potential.values[0,0,:]
-        comp_energies = finite_square_box_energies(2.0E-9, 1000.0)
         assert_almost_equal(1000.0-abs(vals[0]), infinite_square_box_energy(1, 2.0E-9), 1)
         assert_almost_equal(1000.0-abs(vals[1]), infinite_square_box_energy(2, 2.0E-9), 1)
         plt.plot(self.potential.values[0,0,:])
@@ -124,14 +140,15 @@ class ArpackOriginalTests(EngineTests):
 
     @istest
     def test_one_d_well_energies(self):
-        from emtpy.constants import hbarev
+        from emtpy.constants import hbarev, eV
         import matplotlib.pyplot as plt
+        comp_energies = finite_square_box_energies(2.0E-9, 10.0)
         self.setup_three_d_one_d_well()
         vals, vectors = self.engine.solve()
         #pot = self.potential.values[0,0,:]
-        comp_energies = finite_square_box_energies(2.0E-9, 1000.0)
-        assert_almost_equal(1000.0-abs(vals[0]), infinite_square_box_energy(1, 2.0E-9), 1)
-        assert_almost_equal(1000.0-abs(vals[1]), infinite_square_box_energy(2, 2.0E-9), 1)
+
+        #assert_almost_equal(10.0-abs(vals[0]), infinite_square_box_energy(1, 2.0E-9), 1)
+        #assert_almost_equal(10.0-abs(vals[1]), infinite_square_box_energy(2, 2.0E-9), 1)
         plt.plot(self.potential.values[0,0,:])
         plt.plot(vectors[:, 0]+vals[0])
         plt.plot(vectors[:, 1]+vals[1])
