@@ -54,3 +54,34 @@ class Distribution(PhysicalGrid):
 #     return
 #   end subroutine conc
 #
+
+
+#
+#
+# !!$  complex function Afracp(x,R)
+# !!$    real, dimension(3,10000),intent(in) :: R
+# !!$    complex :: const, sumation
+# !!$    real,intent(in),dimension(3) :: x
+# !!$    real,dimension(3) :: s
+# !!$    real :: disp
+# !!$    integer :: n,m
+# !!$!    const = ncat*((2.0d0*pi))/(sqrt((2.0d0*pi)**3)*product(sigma))
+# !!$    const = ncat/(sqrt((2.0d0*pi)**3)*product(sigma))
+# !!$    sumation = 0.0d0
+# !!$    do n = 1, Ano
+# !!$       do m = 1, 3
+# !!$          if (x(m)-R(m,n) .gt. ((Rsize(m+3)-Rsize(m))/2.0)) then
+# !!$             disp = (x(m)-R(m,n)) - (Rsize(m+3)-Rsize(m))
+# !!$          else if (x(m)-R(m,n) .le. -((Rsize(m+3)-Rsize(m))/2.0)) then
+# !!$             disp = (x(m)-R(m,n)) + (Rsize(m+3)-Rsize(m))
+# !!$          else
+# !!$             disp = x(m)-R(m,n)
+# !!$          end if
+# !!$          s(m) = (disp**2)/(sigma(m)**2)
+# !!$       end do
+# !!$       sumation = sumation + exp(-0.5d0*sum(s))
+# !!$    end do
+# !!$    Afracp = sumation*const!!!*2.5d0
+# !!$    !!!! Factor of 2.5 compensates for the 40% efficiency of detection !!!!!
+# !!$  end function Afracp
+#

@@ -21,16 +21,28 @@ class PhysicalGrid(object):
         self.no_elements = product(shape)
 
     def compatible_grid(self, other):
+        """
+            Check the compatibility of two grids
+        """
         return self.shape == other.shape and self.size == other.size
 
     def coord_array(self, dim):
+        """
+            Return an array of physical coordinates along the given dimension
+        """
         from numpy import arange
         return arange(self.shape[dim])*self.increments[dim]
 
     def find_index(self, coord):
+        """
+            Given a physical coordinate return the corresponding index
+        """
         return tuple(map(lambda x, y: int(round(x/y)), coord, self.increments))
 
     def coord(self, idx):
+        """
+            Given an index return the corresponding physical coordinate
+        """
         from numpy import array
         return array(map(lambda x, y: x*y, self.increments, idx))
 
@@ -57,9 +69,34 @@ class PhysicalGrid(object):
         return adim
 
     def getijk(self, n):
+        """
+            Given a number n representing the flattened grid, return the original indices
+        """
         from numpy import unravel_index
         return unravel_index(n, self.shape)
 
     def getn(self, idx):
+        """
+            Given an index return a single number n representing the corresponding index on the flattened grid
+        """
         from utils import ravel_index
         return ravel_index(idx, self.shape)
+
+    def fourier_coord(self, idx):
+        """
+            Return the fourier index of idx. That is; the index of the corresponding point in the fourier transformed
+            grid.
+
+            From the Fortran code:
+                n(1) = (mod((l + (sz(1)/2)),sz(1)) - sz(1)/2)
+                n(2) = (mod((m + (sz(2)/2)),sz(2)) - sz(2)/2)
+                n(3) = (mod((p + (sz(3)/2)),sz(3)) - sz(3)/2)
+                k(1) = (2.0d0*pi*n(1))/(sz(1)*grid(ag,1)*1E-9)
+                k(2) = (2.0d0*pi*n(2))/(sz(2)*grid(ag,2)*1E-9)
+                k(3) = (2.0d0*pi*n(3))/(sz(3)*grid(ag,3)*1E-9)
+        """
+        from math import pi
+        n = map(lambda x, y: ((x + (y/2.0)) % y) - y/2.0, idx, self.shape)
+        k = array(map(lambda x, y: 2.0*pi*x/(y*1E-9), n, self.size))
+        return k
+

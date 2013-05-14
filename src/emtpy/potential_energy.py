@@ -67,66 +67,30 @@ class Harmonic(APotentialEnergy):
         self.values = fromfunction(_harmonic_oscillator, shape)
 
 
+class Offset(APotentialEnergy):
 
-#
-#   complex function fphi(kv,chi)
-#     real, intent(in), dimension(3) :: kv
-#     complex, intent(in) :: chi
-#     real :: ksq
-#     complex :: prefactor
-#     ksq = sum(kv**2)
-#     if (ksq .eq. 0.0) then
-#        fphi = 0.0d0
-#     else
-#        prefactor = -(chi*kv(3)*eps(1,1)*cmplx(0.0d0,1.0d0))&
-#             &/(epsilonr*epsilon0*(ksq**2))
-#        fphi = prefactor*(ksq*((2.0d0*e31) + e33) + gamma*((e31 + &
-#             &2.0d0*e15)*((kv(1)**2) + (kv(2)**2)) + (e33*(kv(3)**2))))
-#     end if
-#   end function fphi
-#
-#   complex function fphisp(kv,chi)
-#     real, intent(in), dimension(3) :: kv
-#     complex, intent(in) :: chi!,chi2
-#     real :: ksq
-#     complex :: const
-#     ksq = sum(kv**2)
-#     if (ksq .eq. 0.0) then
-#        const = 0.0d0
-#     else
-#        const = (cmplx(0.0d0,1.0d0)*kv(3))/(epsilon0*epsilonr*ksq)
-#     end if
-# !    fphisp = const*((chi*(bPsp-deltaP))-(chi2*bPsp))
-#     fphisp = const*(chi*(-deltaP))
-#   end function fphisp
-#
-# !!$  complex function Afracp(x,R)
-# !!$    real, dimension(3,10000),intent(in) :: R
-# !!$    complex :: const, sumation
-# !!$    real,intent(in),dimension(3) :: x
-# !!$    real,dimension(3) :: s
-# !!$    real :: disp
-# !!$    integer :: n,m
-# !!$!    const = ncat*((2.0d0*pi))/(sqrt((2.0d0*pi)**3)*product(sigma))
-# !!$    const = ncat/(sqrt((2.0d0*pi)**3)*product(sigma))
-# !!$    sumation = 0.0d0
-# !!$    do n = 1, Ano
-# !!$       do m = 1, 3
-# !!$          if (x(m)-R(m,n) .gt. ((Rsize(m+3)-Rsize(m))/2.0)) then
-# !!$             disp = (x(m)-R(m,n)) - (Rsize(m+3)-Rsize(m))
-# !!$          else if (x(m)-R(m,n) .le. -((Rsize(m+3)-Rsize(m))/2.0)) then
-# !!$             disp = (x(m)-R(m,n)) + (Rsize(m+3)-Rsize(m))
-# !!$          else
-# !!$             disp = x(m)-R(m,n)
-# !!$          end if
-# !!$          s(m) = (disp**2)/(sigma(m)**2)
-# !!$       end do
-# !!$       sumation = sumation + exp(-0.5d0*sum(s))
-# !!$    end do
-# !!$    Afracp = sumation*const!!!*2.5d0
-# !!$    !!!! Factor of 2.5 compensates for the 40% efficiency of detection !!!!!
-# !!$  end function Afracp
-#
+    def __init__(self, mat_dist):
+        import numpy as np
+        from material import Electron
+
+        X = mat_dist.chi
+
+        V = np.zeros(X.shape)
+        if isinstance(mat_dist.carrier, Electron):
+           off = mat_dist.cboffset
+           zero = BE
+           sign = 1.0
+        else:
+           off = mat_dist.vboffset
+           zero = 0.0
+           sign = -1.0
+
+        V = sign*off*self.Eg(X) + zero
+
+    def Eg(self, chi):
+        return (chi*(AE-BE)) - ((b*chi)*(1.0-chi))
+
+
 #   real function Eg(chi)
 #     real, intent(in) :: chi
 #     Eg = (chi*(AE-BE)) - ((b*chi)*(1.0d0-chi))
@@ -160,6 +124,19 @@ class Harmonic(APotentialEnergy):
 #   end subroutine offset
 #
 
+class Deformation(APotentialEnergy):
+
+    def __init__(self, strain, mat_param):
+        import numpy as np
+
+        # The choice between different deformation potential parameters based on carrier type should definitely be
+        #   done by the material or material_distribution objects. This then reduces this class to one line:
+        V = deformation = (strain[1,1,:,:,:]+strain[2,2,:,:,:])*(defBNa2+BND2) + strain[3,3,:,:,:]*(defBNa1+BND1)
+
+        # This obviously won't work for one-d arrays so I wonder if we could make a strain class which takes care of the
+        #  extra indices for us. I.e. we could ask for the trace or just certain diagonal components
+
+
 #   subroutine defpot(U,X,deformation,para,sz,ag)
 #     implicit none
 #     integer, intent(in) :: sz(3), ag(3)
@@ -187,6 +164,42 @@ class Harmonic(APotentialEnergy):
 #     end if
 #   end subroutine defpot
 #
+
+
+class SpontaneousPolarization(APotentialEnergy):
+
+    def __init__(self, mat_dist):
+        import numpy as np
+
+        X = mat_dist.chi
+
+        V = np.zeros(X.shape)
+        for idx, chi in np.ndenumerate(X):
+            k = X.fourier_coord(idx)
+            V[idx] = self.__fphisp(k, chi)
+
+    def __fphisp(self, kv, chi):
+        ksq = sum(kv**2)
+        if ksq == 0.0:
+            const = 0.0
+        else:
+            const = (complex(0.0,1.0)*kv(3))/(epsilon0*epsilonr*ksq)
+        return const*(chi*(-deltaP))
+
+#   complex function fphisp(kv,chi)
+#     real, intent(in), dimension(3) :: kv
+#     complex, intent(in) :: chi!,chi2
+#     real :: ksq
+#     complex :: const
+#     ksq = sum(kv**2)
+#     if (ksq .eq. 0.0) then
+#        const = 0.0d0
+#     else
+#        const = (cmplx(0.0d0,1.0d0)*kv(3))/(epsilon0*epsilonr*ksq)
+#     end if
+# !    fphisp = const*((chi*(bPsp-deltaP))-(chi2*bPsp))
+#     fphisp = const*(chi*(-deltaP))
+#   end function fphisp
 
 #   subroutine spontpot(X,V,sz,ag)
 #     implicit none
@@ -217,6 +230,44 @@ class Harmonic(APotentialEnergy):
 #     end do
 #   end subroutine spontpot
 #
+
+
+class PiezoelectricPolarization(APotentialEnergy):
+
+    def __init__(self, mat_dist):
+        import numpy as np
+
+        X = mat_dist.chi
+
+        V = np.zeros(X.shape)
+        for idx, chi in np.ndenumerate(X):
+            k = X.fourier_coord(idx)
+            V[idx] = self.__fphi(k, chi)
+
+    def __fphi(self, kv, chi):
+        ksq = sum(kv**2)
+        if ksq == 0.0:
+            return 0.0
+        prefactor = -(chi*kv(3)*eps(1,1)*complex(0.0,1.0))/(epsilonr*epsilon0*(ksq**2))
+        fphi = prefactor*(ksq*((2.0*e31) + e33) + gamma*((e31 + 2.0*e15)*((kv(1)**2) + (kv(2)**2)) + (e33*(kv(3)**2))))
+        return fphi
+
+#   complex function fphi(kv,chi)
+#     real, intent(in), dimension(3) :: kv
+#     complex, intent(in) :: chi
+#     real :: ksq
+#     complex :: prefactor
+#     ksq = sum(kv**2)
+#     if (ksq .eq. 0.0) then
+#        fphi = 0.0d0
+#     else
+#        prefactor = -(chi*kv(3)*eps(1,1)*cmplx(0.0d0,1.0d0))&
+#             &/(epsilonr*epsilon0*(ksq**2))
+#        fphi = prefactor*(ksq*((2.0d0*e31) + e33) + gamma*((e31 + &
+#             &2.0d0*e15)*((kv(1)**2) + (kv(2)**2)) + (e33*(kv(3)**2))))
+#     end if
+#   end function fphi
+
 #   subroutine piezopot(X,V,sz,ag)
 #     implicit none
 #     integer, intent(in) :: sz(3), ag(3)

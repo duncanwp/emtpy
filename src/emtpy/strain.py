@@ -1,4 +1,18 @@
 __author__ = 'duncan'
+import numpy as np
+from utils import deltaij
+
+
+def strain(X, eps, gamma):
+
+    TrU = np.zeros(X.shape)
+    for idx, chi in np.ndenumerate(X):
+        k = X.fourier_coord(idx)
+        ksq = sum(k**2)
+        if ksq == 0.0:
+            TrU[idx] = eps(1, 1)*chi
+        else:
+            TrU[idx] = eps(1, 1)*chi*(1.0+(gamma*((k(3)*k(3))/ksq)))
 
 #   subroutine strain(X,TrU,sz,ag)
 #     implicit none
@@ -31,6 +45,26 @@ __author__ = 'duncan'
 #     end do
 #   end subroutine strain
 #
+
+
+def strain_tensor(X, eps, gamma):
+
+    U = np.zeros((3, 3, X.shape))
+    for idx, chi in np.ndenumerate(X):
+        k = X.fourier_coord(idx)
+        ksq = sum(k**2)
+        for i in range(3):
+            for j in range(3):
+                if ksq == 0.0:
+                    if i == j:
+                        if i == 3 and j == 3:
+                            U[i, j, idx] = eps(i, j)*(deltaij(i, j)+gamma)*chi
+                        else:
+                            U[i, j, idx] = eps(i, j)*chi
+                    else:
+                        U[i, j, idx] = 0.0
+                else:
+                    U[i, j, idx] = eps(i, j)*chi*(deltaij(i, j)+(gamma*((k(i)*k(j))/ksq)))
 
 
 #   subroutine straintensor(X,U,sz,ag)
