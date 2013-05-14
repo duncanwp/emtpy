@@ -13,18 +13,28 @@ def infinite_square_box_energy(n, L):
 
 def finite_square_box_energies(L, V_0, tol=1.0E-3):
     from emtpy.constants import me, eV, hbarev, hbar
-    from numpy import sqrt, tan, arange, linspace
+    from numpy import sqrt, tan, arange, linspace, fromfunction, array
     from scipy.optimize import fsolve, bisect, brentq, newton
+    import numpy as np
 
-    u_0_sq = (me * L**2 * V_0**2)/(2 * hbarev**2)
+    u_0_sq = (me * L**2 * V_0**2)/(2 * hbar**2)
 
     #u_0_sq = 20
 
-    def symmetric_solution(v):
+    def symmetric_solution_vec(v):
         from numpy import isnan
         a = sqrt(u_0_sq - v**2)
         where_are_nans = isnan(a)
         a[where_are_nans] = 0.0
+        b = (v * tan(v))
+        val = a - b
+        return val
+
+    def symmetric_solution(v):
+        if v > u_0_sq:
+            a = sqrt(u_0_sq - v**2)
+        else:
+            a = 0.0
         b = (v * tan(v))
         val = a - b
         return val
@@ -37,18 +47,34 @@ def finite_square_box_energies(L, V_0, tol=1.0E-3):
         return a + (v / tan(v))
 
     def energy(v):
-        return ((2.0 * hbar**2 * v**2)/(me*L**2))
+        return ((2.0 * hbar**2 * v**2)/(me*L**2))/eV
+
+    def initial_guess_at_roots(func, delta, a, b):
+        n = int((b-a)/delta)
+        increments = linspace(a, b, n)
+        zeros = []
+        prev = a
+        ar = array([func(inc) for inc in increments])
+        zero_crossings = np.where(np.diff(np.sign(ar)))[0]
+        return zero_crossings*delta
 
 
-    #symm_sol = brentq(symmetric_solution, 0.0, sqrt(u_0_sq))
+    # initial_guess = sqrt(linspace(0.0 +  sqrt(u_0_sq)/5.0, sqrt(u_0_sq),5))
+    # initial_guess = linspace(0.0 + (u_0_sq)/5.0, (u_0_sq),5)
+    # symm_sol = brentq(symmetric_solution, 0.0 + (u_0_sq)/50.0, (u_0_sq))
+    # sym_en = energy(symm_sol)
     #anti_symm_sol = energy(bisect(anti_symmetric_solution, 0.0, u_0_sq))
-    # solutions, info, ierr, mesg = fsolve(symmetric_solution, sqrt(linspace(0.0 +  sqrt(u_0_sq)/5.0, sqrt(u_0_sq),5)), full_output=True)
-    # anti_solutions, info, ierr, mesg = fsolve(anti_symmetric_solution, sqrt(linspace(0.0 +  sqrt(u_0_sq)/5.0, sqrt(u_0_sq),5)), full_output=True)
-    solutions, info, ierr, mesg = fsolve(symmetric_solution, (linspace(0.0 +  (u_0_sq**2)/5.0, (u_0_sq**2),5)), full_output=True)
-    anti_solutions, info, ierr, mesg = fsolve(anti_symmetric_solution, (linspace(0.0 +  (u_0_sq**2)/5.0, (u_0_sq**2),5)), full_output=True)
+    initial_guess = initial_guess_at_roots(symmetric_solution, sqrt(u_0_sq)/100.0, 0.0+sqrt(u_0_sq)/100.0, sqrt(u_0_sq))
+    solutions, info, ierr, mesg = fsolve(symmetric_solution_vec, initial_guess, full_output=True)
+    if ierr != 1:
+        print mesg
+        assert False
+    anti_solutions, info, ierr, mesg = fsolve(anti_symmetric_solution, sqrt(linspace(0.0 +  sqrt(u_0_sq)/5.0, sqrt(u_0_sq),5)), full_output=True)
+    # solutions, info, ierr, mesg = fsolve(symmetric_solution, (linspace(0.0 +  (u_0_sq**2)/5.0, (u_0_sq**2),5)), full_output=True)
+    # anti_solutions, info, ierr, mesg = fsolve(anti_symmetric_solution, (linspace(0.0 +  (u_0_sq**2)/5.0, (u_0_sq**2),5)), full_output=True)
 
     sols = set(list(abs(solutions.round(5)))+list(abs(anti_solutions.round(5))))
-    energies = [energy(e) for e in sols if e < sqrt(u_0_sq)]
+    energies = [energy(e) for e in sols] # if e < sqrt(u_0_sq)]
     energies.sort()
     return energies
 
@@ -91,8 +117,8 @@ class EngineTests(object):
 
     def setup_three_d_one_d_well(self):
         from emtpy.grid import PhysicalGrid
-        self.potential = ThreeDOneDWell(2.0, 10.0, (1, 1, 100), (1.0, 1.0, 10.0))
-        self.mat_dist = MockMaterialDistribution(PhysicalGrid((1, 1, 100), (1.0, 1.0, 10.0)))
+        self.potential = ThreeDOneDWell(2.0, 10.0, (1, 1, 500), (1.0, 1.0, 10.0))
+        self.mat_dist = MockMaterialDistribution(PhysicalGrid((1, 1, 500), (1.0, 1.0, 10.0)))
         self.engine = self.TestEngine(self.mat_dist, self.potential)
 
     @istest
@@ -142,7 +168,7 @@ class ArpackOriginalTests(EngineTests):
     def test_one_d_well_energies(self):
         from emtpy.constants import hbarev, eV
         import matplotlib.pyplot as plt
-        comp_energies = finite_square_box_energies(2.0E-9, 10.0)
+        comp_energies = finite_square_box_energies(2.0E-9, 10.0*eV)
         self.setup_three_d_one_d_well()
         vals, vectors = self.engine.solve()
         #pot = self.potential.values[0,0,:]
