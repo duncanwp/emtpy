@@ -56,7 +56,7 @@ def finite_square_box_energies(L, V_0, tol=1.0E-3):
         prev = a
         ar = array([func(inc) for inc in increments])
         zero_crossings = np.where(np.diff(np.sign(ar)))[0]
-        return zero_crossings*delta
+        return [ (zc*delta, (zc-1)*delta) for zc in zero_crossings ]
 
 
     # initial_guess = sqrt(linspace(0.0 +  sqrt(u_0_sq)/5.0, sqrt(u_0_sq),5))
@@ -65,6 +65,9 @@ def finite_square_box_energies(L, V_0, tol=1.0E-3):
     # sym_en = energy(symm_sol)
     #anti_symm_sol = energy(bisect(anti_symmetric_solution, 0.0, u_0_sq))
     initial_guess = initial_guess_at_roots(symmetric_solution, sqrt(u_0_sq)/100.0, 0.0+sqrt(u_0_sq)/100.0, sqrt(u_0_sq))
+
+    symm_sol = brentq(symmetric_solution, initial_guess[0][0], initial_guess[0][1])
+
     solutions, info, ierr, mesg = fsolve(symmetric_solution_vec, initial_guess, full_output=True)
     if ierr != 1:
         print mesg
