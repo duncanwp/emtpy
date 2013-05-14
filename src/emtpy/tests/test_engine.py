@@ -1,90 +1,16 @@
+from emtpy.tests.semi_analytic_solution import finite_square_box_energies, infinite_square_box_energy
+
 __author__ = 'pard'
 from nose.tools import istest, eq_
 from numpy.testing.utils import assert_almost_equal
 from emtpy.potential_energy import Harmonic, OneDWell, ThreeDOneDWell
-from emtpy.material_distribution import MaterialDistribution
 
 
-def infinite_square_box_energy(n, L):
-    from emtpy.constants import hbar, me, eV
-    from math import pi
-    return ((hbar**2 * pi**2 * n**2)/(2.0*me*L**2))/eV
 
-
-def finite_square_box_energies(L, V_0, tol=1.0E-3):
-    from emtpy.constants import me, eV, hbarev, hbar
-    from numpy import sqrt, tan, arange, linspace, fromfunction, array
-    from scipy.optimize import fsolve, bisect, brentq, newton
-    import numpy as np
-
-    u_0_sq = (me * L**2 * V_0**2)/(2 * hbar**2)
-
-    #u_0_sq = 20
-
-    def symmetric_solution_vec(v):
-        from numpy import isnan
-        a = sqrt(u_0_sq - v**2)
-        where_are_nans = isnan(a)
-        a[where_are_nans] = 0.0
-        b = (v * tan(v))
-        val = a - b
-        return val
-
-    def symmetric_solution(v):
-        if v > u_0_sq:
-            a = sqrt(u_0_sq - v**2)
-        else:
-            a = 0.0
-        b = (v * tan(v))
-        val = a - b
-        return val
-
-    def anti_symmetric_solution(v):
-        from numpy import isnan
-        a = sqrt(u_0_sq - v**2)
-        where_are_nans = isnan(a)
-        a[where_are_nans] = 0.0
-        return a + (v / tan(v))
-
-    def energy(v):
-        return ((2.0 * hbar**2 * v**2)/(me*L**2))/eV
-
-    def initial_guess_at_roots(func, delta, a, b):
-        n = int((b-a)/delta)
-        increments = linspace(a, b, n)
-        zeros = []
-        prev = a
-        ar = array([func(inc) for inc in increments])
-        zero_crossings = np.where(np.diff(np.sign(ar)))[0]
-        return [ (zc*delta, (zc-1)*delta) for zc in zero_crossings ]
-
-
-    # initial_guess = sqrt(linspace(0.0 +  sqrt(u_0_sq)/5.0, sqrt(u_0_sq),5))
-    # initial_guess = linspace(0.0 + (u_0_sq)/5.0, (u_0_sq),5)
-    # symm_sol = brentq(symmetric_solution, 0.0 + (u_0_sq)/50.0, (u_0_sq))
-    # sym_en = energy(symm_sol)
-    #anti_symm_sol = energy(bisect(anti_symmetric_solution, 0.0, u_0_sq))
-    initial_guess = initial_guess_at_roots(symmetric_solution, sqrt(u_0_sq)/100.0, 0.0+sqrt(u_0_sq)/100.0, sqrt(u_0_sq))
-
-    symm_sol = brentq(symmetric_solution, initial_guess[0][0], initial_guess[0][1])
-
-    solutions, info, ierr, mesg = fsolve(symmetric_solution_vec, initial_guess, full_output=True)
-    if ierr != 1:
-        print mesg
-        assert False
-    anti_solutions, info, ierr, mesg = fsolve(anti_symmetric_solution, sqrt(linspace(0.0 +  sqrt(u_0_sq)/5.0, sqrt(u_0_sq),5)), full_output=True)
-    # solutions, info, ierr, mesg = fsolve(symmetric_solution, (linspace(0.0 +  (u_0_sq**2)/5.0, (u_0_sq**2),5)), full_output=True)
-    # anti_solutions, info, ierr, mesg = fsolve(anti_symmetric_solution, (linspace(0.0 +  (u_0_sq**2)/5.0, (u_0_sq**2),5)), full_output=True)
-
-    sols = set(list(abs(solutions.round(5)))+list(abs(anti_solutions.round(5))))
-    energies = [energy(e) for e in sols] # if e < sqrt(u_0_sq)]
-    energies.sort()
-    return energies
 
 class MockMaterialDistribution(object):
 
     def __init__(self,grid,  eff_mass=None):
-        from emtpy.constants import me
         self.__eff_mass = (1.0, 1.0) if eff_mass is None else eff_mass
         self.chi = grid
         # self.increments = (1, 1, 10)
@@ -107,7 +33,6 @@ class EngineTests(object):
         self.TestEngine = engine
 
     def setup_harmonic(self):
-        from emtpy.grid import PhysicalGrid
         self.potential = Harmonic(1.0, (100, 100, 100), (10.0, 10.0, 10.0))
         self.mat_dist = MockMaterialDistribution()
         self.engine = self.TestEngine(self.mat_dist, self.potential)
@@ -134,7 +59,6 @@ class EngineTests(object):
 
     @istest
     def test_one_d_well_energies(self):
-        from emtpy.constants import hbarev, eV
         import matplotlib.pyplot as plt
         comp_energies = finite_square_box_energies(2.0E-9, 1000.0)
         self.setup_one_d_well()
@@ -169,7 +93,7 @@ class ArpackOriginalTests(EngineTests):
 
     @istest
     def test_one_d_well_energies(self):
-        from emtpy.constants import hbarev, eV
+        from emtpy.constants import eV
         import matplotlib.pyplot as plt
         comp_energies = finite_square_box_energies(2.0E-9, 10.0*eV)
         self.setup_three_d_one_d_well()
