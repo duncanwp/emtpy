@@ -1,11 +1,8 @@
-from emtpy.tests.semi_analytic_solution import finite_square_box_energies, infinite_square_box_energy
-
 __author__ = 'pard'
-from nose.tools import istest, eq_
-from numpy.testing.utils import assert_almost_equal
+from emtpy.tests.semi_analytic_solution import finite_square_box_energies, infinite_square_box_energy
+from nose.tools import istest, nottest, eq_
+from emtpy.utils import assert_almost_equal
 from emtpy.potential_energy import Harmonic, OneDWell, ThreeDOneDWell
-
-
 
 
 class MockMaterialDistribution(object):
@@ -45,7 +42,7 @@ class EngineTests(object):
 
     def setup_three_d_one_d_well(self):
         from emtpy.grid import PhysicalGrid
-        self.potential = ThreeDOneDWell(2.0, 10.0, (1, 1, 500), (1.0, 1.0, 10.0))
+        self.potential = ThreeDOneDWell(1.0, 2.0, (1, 1, 500), (1.0, 1.0, 10.0))
         self.mat_dist = MockMaterialDistribution(PhysicalGrid((1, 1, 500), (1.0, 1.0, 10.0)))
         self.engine = self.TestEngine(self.mat_dist, self.potential)
 
@@ -94,14 +91,32 @@ class ArpackOriginalTests(EngineTests):
     @istest
     def test_one_d_well_energies(self):
         from emtpy.constants import eV
-        import matplotlib.pyplot as plt
-        comp_energies = finite_square_box_energies(2.0E-9, 10.0*eV)
+        comp_energies = finite_square_box_energies(1.0E-9, 2.0*eV)
         self.setup_three_d_one_d_well()
         vals, vectors = self.engine.solve()
-        #pot = self.potential.values[0,0,:]
 
-        #assert_almost_equal(10.0-abs(vals[0]), infinite_square_box_energy(1, 2.0E-9), 1)
-        #assert_almost_equal(10.0-abs(vals[1]), infinite_square_box_energy(2, 2.0E-9), 1)
+        for ref_en, en in zip(comp_energies, vals):
+            assert_almost_equal(abs(en), ref_en)
+
+    @istest
+    def test_one_d_well_wavefuncs(self):
+        from numpy import dot
+        from itertools import combinations
+        self.setup_three_d_one_d_well()
+        vals, vectors = self.engine.solve()
+
+        vecs = [vectors[:, i] for i in range(len(vals))]
+        vector_pairs = combinations(vecs, 2)
+
+        for pair in vector_pairs:
+            assert_almost_equal(dot(*pair), 0.0)
+
+    @nottest
+    def plot_one_d_well_wavefuncs(self):
+        import matplotlib.pyplot as plt
+        self.setup_three_d_one_d_well()
+        vals, vectors = self.engine.solve()
+
         plt.plot(self.potential.values[0,0,:])
         plt.plot(vectors[:, 0]+vals[0])
         plt.plot(vectors[:, 1]+vals[1])

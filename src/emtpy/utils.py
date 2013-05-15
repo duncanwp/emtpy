@@ -1,6 +1,10 @@
 __author__ = 'pard'
 
 
+def assert_almost_equal(x, y, tol=1E-3):
+    assert abs(x-y) < tol
+
+
 def heaviside(x):
     import numpy as np
     return 0.5 * (np.sign(x) + 1)
