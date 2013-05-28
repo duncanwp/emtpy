@@ -28,10 +28,13 @@ class EngineTests(object):
 
     def __init__(self, engine):
         self.TestEngine = engine
+        self.well_depth = 2.0
+        self.well_width = 1.0
 
-    def setup_harmonic(self):
-        self.potential = Harmonic(1.0, (100, 100, 100), (10.0, 10.0, 10.0))
-        self.mat_dist = MockMaterialDistribution()
+    def setup_3d_harmonic(self):
+        from emtpy.grid import PhysicalGrid
+        self.potential = Harmonic(1.0, (10, 10, 10), (3.0, 3.0, 3.0))
+        self.mat_dist = MockMaterialDistribution(PhysicalGrid((10, 10, 10), (3.0, 3.0, 3.0)))
         self.engine = self.TestEngine(self.mat_dist, self.potential)
 
     def setup_one_d_well(self):
@@ -40,16 +43,80 @@ class EngineTests(object):
         self.mat_dist = MockMaterialDistribution(PhysicalGrid((100,), (10.0,)))
         self.engine = self.TestEngine(self.mat_dist, self.potential)
 
-    def setup_three_d_one_d_well(self):
+    def setup_three_d_one_d_well(self, middle=5.0):
         from emtpy.grid import PhysicalGrid
-        self.potential = ThreeDOneDWell(1.0, 2.0, (1, 1, 500), (1.0, 1.0, 10.0))
+        self.potential = ThreeDOneDWell(self.well_width, self.well_depth, (1, 1, 500), (1.0, 1.0, 10.0), middle)
         self.mat_dist = MockMaterialDistribution(PhysicalGrid((1, 1, 500), (1.0, 1.0, 10.0)))
         self.engine = self.TestEngine(self.mat_dist, self.potential)
 
     @istest
+    def test_three_d_one_d_well_energies(self):
+        comp_energies = finite_square_box_energies(self.well_width, self.well_depth)
+        self.setup_three_d_one_d_well()
+        vals, vectors = self.engine.solve()
+
+        for ref_en, en in zip(comp_energies, vals):
+            assert_almost_equal(abs(en), ref_en)
+
+    @istest
+    def test_periodic_bcs(self):
+        """
+            Test the energies are right when the well stradles the system boundary
+        @return:
+        """
+        import matplotlib.pyplot as plt
+        from numpy import dot
+        from itertools import combinations
+
+        self.setup_three_d_one_d_well(0.0)
+        plt.plot(self.potential.values[0,0,:])
+
+        plt.show()
+
+        comp_energies = finite_square_box_energies(self.well_width, self.well_depth)
+
+        vals, vectors = self.engine.solve()
+
+        for ref_en, en in zip(comp_energies, vals):
+            assert_almost_equal(abs(en), ref_en)
+
+
+        vecs = [vectors[:, i] for i in range(len(vals))]
+        vector_pairs = combinations(vecs, 2)
+
+        for pair in vector_pairs:
+            assert_almost_equal(dot(*pair), 0.0)
+
+
+    @istest
+    def test_three_d_one_d_well_wavefuncs(self):
+        from numpy import dot
+        from itertools import combinations
+        self.setup_three_d_one_d_well()
+        vals, vectors = self.engine.solve()
+
+        vecs = [vectors[:, i] for i in range(len(vals))]
+        vector_pairs = combinations(vecs, 2)
+
+        for pair in vector_pairs:
+            assert_almost_equal(dot(*pair), 0.0)
+
+    @nottest
+    def plot_three_d_one_d_well_wavefuncs(self):
+        import matplotlib.pyplot as plt
+        self.setup_three_d_one_d_well()
+        vals, vectors = self.engine.solve()
+
+        plt.plot(self.potential.values[0,0,:])
+        plt.plot(vectors[:, 0]+vals[0])
+        plt.plot(vectors[:, 1]+vals[1])
+
+        plt.show()
+
+    @istest
     def test_harmonic_oscilator_energies(self):
         from emtpy.constants import hbarev
-        self.setup_harmonic()
+        self.setup_3d_harmonic()
         vals, vectors = self.engine.solve()
         eq_(vals[0], hbarev*1)
         eq_(vals[1], hbarev*2)
@@ -90,38 +157,18 @@ class ArpackOriginalTests(EngineTests):
 
     @istest
     def test_one_d_well_energies(self):
-        from emtpy.constants import eV
-        comp_energies = finite_square_box_energies(1.0E-9, 2.0*eV)
-        self.setup_three_d_one_d_well()
-        vals, vectors = self.engine.solve()
+        super(ArpackOriginalTests, self).test_periodic_bcs()
 
-        for ref_en, en in zip(comp_energies, vals):
-            assert_almost_equal(abs(en), ref_en)
 
     @istest
-    def test_one_d_well_wavefuncs(self):
-        from numpy import dot
-        from itertools import combinations
-        self.setup_three_d_one_d_well()
+    def test_harmonic_oscilator_energies(self):
+        from emtpy.constants import hbarev
+        self.setup_3d_harmonic()
         vals, vectors = self.engine.solve()
+        eq_(vals[0], hbarev*1)
+        eq_(vals[1], hbarev*2)
 
-        vecs = [vectors[:, i] for i in range(len(vals))]
-        vector_pairs = combinations(vecs, 2)
 
-        for pair in vector_pairs:
-            assert_almost_equal(dot(*pair), 0.0)
-
-    @nottest
-    def plot_one_d_well_wavefuncs(self):
-        import matplotlib.pyplot as plt
-        self.setup_three_d_one_d_well()
-        vals, vectors = self.engine.solve()
-
-        plt.plot(self.potential.values[0,0,:])
-        plt.plot(vectors[:, 0]+vals[0])
-        plt.plot(vectors[:, 1]+vals[1])
-
-        plt.show()
 
     # @istest
     # def test_one_d_well_energies(self):

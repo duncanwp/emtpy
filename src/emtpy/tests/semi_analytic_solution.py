@@ -37,13 +37,14 @@ def initial_guess_at_roots(func, delta, a, b):
 
 def finite_square_box_energies(L, V_0, tol=1.0E-3):
     """
-        Helper method
+        Helper method. Converts well width to m (from nm) and well depth to J (from eV)
     @param L:
     @param V_0:
     @param tol:
     @return:
     """
-    AS = AnalyticSolution(L, V_0, tol)
+    from emtpy.constants import eV
+    AS = AnalyticSolution(L*1E-9, V_0*eV, tol)
     return AS.finite_square_box_energies()
 
 

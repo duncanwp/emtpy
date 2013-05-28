@@ -8,17 +8,23 @@ class APotentialEnergy(PhysicalGrid):
 
 class ThreeDOneDWell(APotentialEnergy):
 
-    def __init__(self, width, depth, shape, size):
+    def __init__(self, width, depth, shape, size, middle=None):
         import numpy as np
         from utils import heaviside
 
         # Create a new grid for the potential
         super(ThreeDOneDWell, self).__init__(shape, size)
 
-        # Define r_0, the center of the well, to be the middle of the grid
-        r_0 = size[2] / 2.0
+        if middle is None:
+            # Define r_0, the center of the well, to be the middle of the grid
+            r_0 = size[2] / 2.0
+        else:
+            # The middle is defined
+            r_0 = middle
 
-        one_d_vector = depth - depth*heaviside(width/2.0-abs(self.coord_array(2)-r_0))
+        one_d_vector = depth - depth*heaviside((r_0 + (width/2.0) - self.coord_array(2)) % self.size[2]) - \
+                       depth*heaviside((r_0 - (width/2.0) - self.coord_array(2)) % self.size[2])
+        # one_d_vector = depth - depth*heaviside(((width/2.0) - abs(self.coord_array(2)-r_0) + self.size[2]/2.0) % self.size[2])
         self.values = np.array([[one_d_vector]])
         #self.values = np.tile(one_d_vector,(1, shape[1], shape[2]))
 

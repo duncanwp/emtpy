@@ -6,6 +6,11 @@ def assert_almost_equal(x, y, tol=1E-3):
 
 
 def heaviside(x):
+    """
+        A vector heaviside function. Returns 0 when x < 0, 0.5 when x == 0 and 1.0 when x > 0.0
+    @param x:
+    @return:
+    """
     import numpy as np
     return 0.5 * (np.sign(x) + 1)
 
