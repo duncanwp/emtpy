@@ -310,10 +310,10 @@ class ARPACKOriginal(Engine):
             ija[j+1] = k + 1
         elements = k
 
-        print "Elements used: ", elements
-        print "Space allocated: ", non_zeros
-        print "Space required without symmetric storage: ", (self.pot_energy.no_elements*7)+1
-        print "Space required with standard array storage: ", self.pot_energy.no_elements**2
+        print("Elements used: ", elements)
+        print("Space allocated: ", non_zeros)
+        print("Space required without symmetric storage: ", (self.pot_energy.no_elements*7)+1)
+        print("Space required with standard array storage: ", self.pot_energy.no_elements**2)
 
         return ija, sa
 
